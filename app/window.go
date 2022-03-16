@@ -7,6 +7,7 @@ import (
 	"syscall/js"
 
 	"github.com/mokiat/lacking/app"
+	"github.com/mokiat/wasmgl"
 )
 
 // Run starts a new application by attaching to the specified in the config
@@ -43,6 +44,11 @@ func Run(cfg *Config, controller app.Controller) error {
 		if cfg.height != nil {
 			htmlCanvas.Set("height", *cfg.height)
 		}
+	}
+
+	// TODO: Make graphics library configurable
+	if err := wasmgl.InitFromCanvas(htmlCanvas); err != nil {
+		return fmt.Errorf("error initializing webgl: %w", err)
 	}
 
 	l := newLoop(htmlDocument, htmlCanvas, controller)
