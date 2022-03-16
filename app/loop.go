@@ -22,6 +22,7 @@ func newLoop(htmlDocument, htmlCanvas js.Value, controller app.Controller) *loop
 		htmlCanvas:   htmlCanvas,
 		controller:   controller,
 		tasks:        make(chan func() error, taskQueueSize),
+		gamepads:     make(map[int]struct{}),
 		shouldStop:   false,
 	}
 }
@@ -33,6 +34,7 @@ type loop struct {
 	htmlCanvas   js.Value
 	controller   app.Controller
 	tasks        chan func() error
+	gamepads     map[int]struct{}
 	shouldStop   bool
 }
 
@@ -49,6 +51,16 @@ func (l *loop) Run() error {
 	defer keyupCallback.Release()
 	l.htmlCanvas.Call("addEventListener", "keyup", keyupCallback)
 	defer l.htmlCanvas.Call("removeEventListener", "keyup", keyupCallback)
+
+	gamepadConnectedCallback := js.FuncOf(l.onJSGamepadConnected)
+	defer gamepadConnectedCallback.Release()
+	js.Global().Call("addEventListener", "gamepadconnected", gamepadConnectedCallback)
+	defer js.Global().Call("removeEventListener", "gamepadconnected", gamepadConnectedCallback)
+
+	gamepadDisconnectedCallback := js.FuncOf(l.onJSGamepadDisconnected)
+	defer gamepadDisconnectedCallback.Release()
+	js.Global().Call("addEventListener", "gamepaddisconnected", gamepadDisconnectedCallback)
+	defer js.Global().Call("removeEventListener", "gamepaddisconnected", gamepadDisconnectedCallback)
 
 	done := make(chan error, 1)
 	var loopFunc js.Func
@@ -93,39 +105,40 @@ func (l *loop) Size() (int, int) {
 }
 
 func (l *loop) GamepadState(index int) (app.GamepadState, bool) {
-	// var joystick glfw.Joystick
-	// switch index {
-	// case 0:
-	// 	joystick = glfw.Joystick1
-	// case 1:
-	// 	joystick = glfw.Joystick2
-	// case 2:
-	// 	joystick = glfw.Joystick3
-	// case 3:
-	// 	joystick = glfw.Joystick4
-	// default:
-	// 	return app.GamepadState{}, false
-	// }
-	// if !joystick.Present() || !joystick.IsGamepad() {
-	// 	return app.GamepadState{}, false
-	// }
+	if _, ok := l.gamepads[index]; !ok {
+		return app.GamepadState{}, false
+	}
 
-	// state := joystick.GetGamepadState()
-	// return app.GamepadState{
-	// 	LeftStickX:     state.Axes[glfw.AxisLeftX],
-	// 	LeftStickY:     -state.Axes[glfw.AxisLeftY],
-	// 	RightStickX:    state.Axes[glfw.AxisRightX],
-	// 	RightStickY:    -state.Axes[glfw.AxisRightY],
-	// 	LeftTrigger:    (state.Axes[glfw.AxisLeftTrigger] + 1.0) / 2.0,
-	// 	RightTrigger:   (state.Axes[glfw.AxisRightTrigger] + 1.0) / 2.0,
-	// 	LeftBumper:     state.Buttons[glfw.ButtonLeftBumper] == glfw.Press,
-	// 	RightBumper:    state.Buttons[glfw.ButtonRightBumper] == glfw.Press,
-	// 	SquareButton:   state.Buttons[glfw.ButtonSquare] == glfw.Press,
-	// 	CircleButton:   state.Buttons[glfw.ButtonCircle] == glfw.Press,
-	// 	TriangleButton: state.Buttons[glfw.ButtonTriangle] == glfw.Press,
-	// 	CrossButton:    state.Buttons[glfw.ButtonCross] == glfw.Press,
-	// }, true
-	panic("TODO")
+	gamepads := js.Global().Get("navigator").Call("getGamepads")
+	if gamepads.IsNull() {
+		return app.GamepadState{}, false
+	}
+
+	gamepad := gamepads.Index(index)
+	if gamepad.IsNull() {
+		return app.GamepadState{}, false
+	}
+
+	if gamepad.Get("mapping").String() != "standard" {
+		return app.GamepadState{}, false
+	}
+
+	buttons := gamepad.Get("buttons")
+	axes := gamepad.Get("axes")
+	return app.GamepadState{
+		LeftStickX:     float32(axes.Index(0).Float()),
+		LeftStickY:     -float32(axes.Index(1).Float()),
+		RightStickX:    float32(axes.Index(2).Float()),
+		RightStickY:    -float32(axes.Index(3).Float()),
+		LeftTrigger:    float32(buttons.Index(6).Get("value").Float()),
+		RightTrigger:   float32(buttons.Index(7).Get("value").Float()),
+		LeftBumper:     buttons.Index(4).Get("pressed").Bool(),
+		RightBumper:    buttons.Index(5).Get("pressed").Bool(),
+		SquareButton:   buttons.Index(2).Get("pressed").Bool(),
+		CircleButton:   buttons.Index(1).Get("pressed").Bool(),
+		TriangleButton: buttons.Index(3).Get("pressed").Bool(),
+		CrossButton:    buttons.Index(0).Get("pressed").Bool(),
+	}, true
 }
 
 func (l *loop) Schedule(fn func() error) {
@@ -255,4 +268,18 @@ func (l *loop) onJSKeyUp(this js.Value, args []js.Value) interface{} {
 		Code:      keyCode,
 		Modifiers: modifiers,
 	})
+}
+
+func (l *loop) onJSGamepadConnected(this js.Value, args []js.Value) interface{} {
+	event := args[0]
+	index := event.Get("gamepad").Get("index").Int()
+	l.gamepads[index] = struct{}{}
+	return true
+}
+
+func (l *loop) onJSGamepadDisconnected(this js.Value, args []js.Value) interface{} {
+	event := args[0]
+	index := event.Get("gamepad").Get("index").Int()
+	delete(l.gamepads, index)
+	return true
 }
