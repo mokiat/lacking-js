@@ -52,6 +52,36 @@ func (l *loop) Run() error {
 	l.htmlCanvas.Call("addEventListener", "keyup", keyupCallback)
 	defer l.htmlCanvas.Call("removeEventListener", "keyup", keyupCallback)
 
+	mouseEnterCallback := js.FuncOf(l.onJSMouseEnter)
+	defer mouseEnterCallback.Release()
+	l.htmlCanvas.Call("addEventListener", "mouseenter", mouseEnterCallback)
+	defer l.htmlCanvas.Call("removeEventListener", "mouseenter", mouseEnterCallback)
+
+	mouseLeaveCallback := js.FuncOf(l.onJSMouseLeave)
+	defer mouseLeaveCallback.Release()
+	l.htmlCanvas.Call("addEventListener", "mouseleave", mouseLeaveCallback)
+	defer l.htmlCanvas.Call("removeEventListener", "mouseleave", mouseLeaveCallback)
+
+	mouseMoveCallback := js.FuncOf(l.onJSMouseMove)
+	defer mouseMoveCallback.Release()
+	l.htmlCanvas.Call("addEventListener", "mousemove", mouseMoveCallback)
+	defer l.htmlCanvas.Call("removeEventListener", "mousemove", mouseMoveCallback)
+
+	mouseDownCallback := js.FuncOf(l.onJSMouseDown)
+	defer mouseDownCallback.Release()
+	l.htmlCanvas.Call("addEventListener", "mousedown", mouseDownCallback)
+	defer l.htmlCanvas.Call("removeEventListener", "mousedown", mouseDownCallback)
+
+	mouseUpCallback := js.FuncOf(l.onJSMouseUp)
+	defer mouseUpCallback.Release()
+	l.htmlCanvas.Call("addEventListener", "mouseup", mouseUpCallback)
+	defer l.htmlCanvas.Call("removeEventListener", "mouseup", mouseUpCallback)
+
+	mouseScrollCallback := js.FuncOf(l.onJSMouseWheel)
+	defer mouseScrollCallback.Release()
+	l.htmlCanvas.Call("addEventListener", "wheel", mouseScrollCallback)
+	defer l.htmlCanvas.Call("removeEventListener", "wheel", mouseScrollCallback)
+
 	gamepadConnectedCallback := js.FuncOf(l.onJSGamepadConnected)
 	defer gamepadConnectedCallback.Release()
 	js.Global().Call("addEventListener", "gamepadconnected", gamepadConnectedCallback)
@@ -267,6 +297,76 @@ func (l *loop) onJSKeyUp(this js.Value, args []js.Value) interface{} {
 		Type:      app.KeyboardEventTypeKeyUp,
 		Code:      keyCode,
 		Modifiers: modifiers,
+	})
+}
+
+func (l *loop) onJSMouseEnter(this js.Value, args []js.Value) interface{} {
+	event := args[0]
+	return l.controller.OnMouseEvent(l, app.MouseEvent{
+		Index: 0,
+		X:     int(event.Get("offsetX").Float()),
+		Y:     int(event.Get("offsetY").Float()),
+		Type:  app.MouseEventTypeEnter,
+	})
+}
+
+func (l *loop) onJSMouseLeave(this js.Value, args []js.Value) interface{} {
+	event := args[0]
+	return l.controller.OnMouseEvent(l, app.MouseEvent{
+		Index: 0,
+		X:     int(event.Get("offsetX").Float()),
+		Y:     int(event.Get("offsetY").Float()),
+		Type:  app.MouseEventTypeLeave,
+	})
+}
+
+func (l *loop) onJSMouseMove(this js.Value, args []js.Value) interface{} {
+	event := args[0]
+	return l.controller.OnMouseEvent(l, app.MouseEvent{
+		Index: 0,
+		X:     int(event.Get("offsetX").Float()),
+		Y:     int(event.Get("offsetY").Float()),
+		Type:  app.MouseEventTypeMove,
+	})
+}
+
+func (l *loop) onJSMouseDown(this js.Value, args []js.Value) interface{} {
+	event := args[0]
+	// NOTE: Don't prevent this event or the user will never be able
+	// to select canvas for keyboard events.
+	buttonIndex := event.Get("button").Int()
+	return l.controller.OnMouseEvent(l, app.MouseEvent{
+		Index:  0,
+		X:      int(event.Get("offsetX").Float()),
+		Y:      int(event.Get("offsetY").Float()),
+		Type:   app.MouseEventTypeDown,
+		Button: mouseButtonMapping[buttonIndex],
+	})
+}
+
+func (l *loop) onJSMouseUp(this js.Value, args []js.Value) interface{} {
+	event := args[0]
+	event.Call("preventDefault")
+	buttonIndex := event.Get("button").Int()
+	return l.controller.OnMouseEvent(l, app.MouseEvent{
+		Index:  0,
+		X:      int(event.Get("offsetX").Float()),
+		Y:      int(event.Get("offsetY").Float()),
+		Type:   app.MouseEventTypeUp,
+		Button: mouseButtonMapping[buttonIndex],
+	})
+}
+
+func (l *loop) onJSMouseWheel(this js.Value, args []js.Value) interface{} {
+	event := args[0]
+	event.Call("preventDefault")
+	return l.controller.OnMouseEvent(l, app.MouseEvent{
+		Index:   0,
+		X:       int(event.Get("offsetX").Float()),
+		Y:       int(event.Get("offsetY").Float()),
+		Type:    app.MouseEventTypeScroll,
+		ScrollX: event.Get("deltaX").Float(),
+		ScrollY: event.Get("deltaY").Float(),
 	})
 }
 
