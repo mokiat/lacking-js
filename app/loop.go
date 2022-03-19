@@ -92,6 +92,10 @@ func (l *loop) Run() error {
 	js.Global().Call("addEventListener", "gamepaddisconnected", gamepadDisconnectedCallback)
 	defer js.Global().Call("removeEventListener", "gamepaddisconnected", gamepadDisconnectedCallback)
 
+	w, h := l.Size()
+	l.controller.OnResize(l, w, h)
+	l.controller.OnFramebufferResize(l, w, h)
+
 	done := make(chan error, 1)
 	var loopFunc js.Func
 	loopFunc = js.FuncOf(func(this js.Value, args []js.Value) interface{} {
