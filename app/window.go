@@ -47,7 +47,11 @@ func Run(cfg *Config, controller app.Controller) error {
 	}
 
 	// TODO: Make graphics library configurable
-	if err := wasmgl.InitFromCanvas(htmlCanvas); err != nil {
+	err := wasmgl.InitFromCanvas(htmlCanvas,
+		wasmgl.WithOptionAlpha(false),
+		wasmgl.WithOptionPowerPreference(wasmgl.PowerPreferenceHighPerformance),
+	)
+	if err != nil {
 		return fmt.Errorf("error initializing webgl: %w", err)
 	}
 
