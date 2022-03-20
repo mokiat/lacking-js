@@ -41,7 +41,7 @@ func (t *CubeTexture) Use() {
 
 func (t *CubeTexture) Release() {
 	wasmgl.DeleteTexture(t.raw)
-	t.raw = wasmgl.NullTexture
+	t.raw = wasmgl.NilTexture
 }
 
 type CubeTextureAllocateInfo struct {

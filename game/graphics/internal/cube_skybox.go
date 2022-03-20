@@ -45,7 +45,6 @@ smooth in vec3 texCoordInOut;
 void main()
 {
 	fbColor0Out = texture(albedoCubeTextureIn, texCoordInOut);
-	fbColor0Out = vec4(texCoordInOut, 1.0);
 }`
 
 func NewColorSkyboxPresentation() *SkyboxPresentation {

@@ -7,7 +7,7 @@ import (
 )
 
 var defaultFramebuffer = &Framebuffer{
-	raw: wasmgl.NullFramebuffer,
+	raw: wasmgl.NilFramebuffer,
 }
 
 func DefaultFramebuffer() *Framebuffer {
@@ -16,7 +16,7 @@ func DefaultFramebuffer() *Framebuffer {
 
 func NewFramebuffer() *Framebuffer {
 	return &Framebuffer{
-		raw: wasmgl.NullFramebuffer,
+		raw: wasmgl.NilFramebuffer,
 	}
 }
 
@@ -63,7 +63,7 @@ func (b *Framebuffer) Use() {
 
 func (b *Framebuffer) Release() {
 	wasmgl.DeleteFramebuffer(b.raw)
-	b.raw = wasmgl.NullFramebuffer
+	b.raw = wasmgl.NilFramebuffer
 }
 
 type FramebufferAllocateInfo struct {

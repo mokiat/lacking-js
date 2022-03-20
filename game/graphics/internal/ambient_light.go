@@ -12,7 +12,7 @@ func NewAmbientLightPresentation() *LightingPresentation {
 const ambientLightVertexShader = `
 layout(location = 0) in vec3 coordIn;
 
-noperspective out vec2 texCoordInOut;
+smooth out vec2 texCoordInOut;
 
 void main()
 {
@@ -33,7 +33,7 @@ uniform mat4 projectionMatrixIn;
 uniform mat4 viewMatrixIn;
 uniform mat4 cameraMatrixIn;
 
-noperspective in vec2 texCoordInOut;
+smooth in vec2 texCoordInOut;
 
 const float pi = 3.141592;
 
@@ -46,7 +46,7 @@ struct ambientFresnelInput {
 
 vec3 calculateAmbientFresnel(ambientFresnelInput i) {
 	float normViewDot = clamp(dot(i.normal, i.viewDirection), 0.0, 1.0);
-	return i.reflectanceF0 + (max(vec3(1.0 - i.roughness), i.reflectanceF0) - i.reflectanceF0) * pow(1.0 - normViewDot, 5);
+	return i.reflectanceF0 + (max(vec3(1.0 - i.roughness), i.reflectanceF0) - i.reflectanceF0) * pow(1.0 - normViewDot, 5.0);
 }
 
 struct geometryInput {
@@ -80,7 +80,7 @@ vec3 calculateAmbientHDR(ambientSetup s) {
 	vec3 reflectedLightIntensity = pow(mix(
 			pow(texture(s.refractionTexture, lightDirection) / pi, vec4(0.25)),
 			pow(texture(s.reflectionTexture, lightDirection), vec4(0.25)),
-			pow(1.0 - s.roughness, 4)
+			pow(1.0 - s.roughness, 4.0)
 		), vec4(4)).xyz;
 	float geometry = calculateGeometry(geometryInput(
 		s.roughness

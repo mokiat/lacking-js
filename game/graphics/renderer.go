@@ -38,6 +38,7 @@ func newRenderer() *Renderer {
 		exposureAlbedoTexture: webgl.NewTwoDTexture(),
 		exposureFramebuffer:   webgl.NewFramebuffer(),
 		exposureBuffer:        webgl.NewBuffer(),
+		exposureSync:          wasmgl.NilSync,
 		exposureTarget:        1.0,
 
 		screenFramebuffer: webgl.DefaultFramebuffer(),
@@ -65,7 +66,7 @@ type Renderer struct {
 	exposureFramebuffer   *webgl.Framebuffer
 	exposurePresentation  *internal.LightingPresentation
 	exposureBuffer        *webgl.Buffer
-	exposureSync          uintptr
+	exposureSync          wasmgl.Sync
 	exposureTarget        float32
 
 	screenFramebuffer *webgl.Framebuffer
@@ -169,16 +170,16 @@ func (r *Renderer) Allocate() {
 	})
 	r.exposurePresentation = internal.NewExposurePresentation()
 
-	// r.exposureBuffer.Allocate(webgl.BufferAllocateInfo{
-	// 	// BufferType: wasmgl.TEX, // TODO: Texture buffer ???!?
-	// 	Dynamic: true,
-	// 	Data:    make([]byte, 4*4),
-	// })
+	r.exposureBuffer.Allocate(webgl.BufferAllocateInfo{
+		BufferType: wasmgl.PIXEL_PACK_BUFFER,
+		Dynamic:    true,
+		Data:       make([]byte, 4*4),
+	})
 
 	r.postprocessingPresentation = internal.NewTonePostprocessingPresentation(internal.ExponentialToneMapping)
 
 	r.directionalLightPresentation = internal.NewDirectionalLightPresentation()
-	// r.ambientLightPresentation = internal.NewAmbientLightPresentation()
+	r.ambientLightPresentation = internal.NewAmbientLightPresentation()
 
 	r.quadMesh.Allocate()
 
@@ -192,14 +193,14 @@ func (r *Renderer) Release() {
 	r.skycolorPresentation.Delete()
 	r.skyboxMesh.Release()
 
-	// r.ambientLightPresentation.Delete()
+	r.ambientLightPresentation.Delete()
 	r.directionalLightPresentation.Delete()
 
 	r.quadMesh.Release()
 
 	r.postprocessingPresentation.Delete()
 
-	// r.exposureBuffer.Release()
+	r.exposureBuffer.Release()
 	r.exposurePresentation.Delete()
 	r.exposureFramebuffer.Release()
 	r.exposureAlbedoTexture.Release()
@@ -246,10 +247,10 @@ func (r *Renderer) Render(viewport graphics.Viewport, scene *Scene, camera *Came
 	// gl.TextureBarrier()
 	r.renderLightingPass(ctx)
 	r.renderForwardPass(ctx)
-	// if camera.autoExposureEnabled {
-	// 	// gl.TextureBarrier()
-	// 	r.renderExposureProbePass(ctx)
-	// }
+	if camera.autoExposureEnabled {
+		// gl.TextureBarrier()
+		r.renderExposureProbePass(ctx)
+	}
 	r.renderPostprocessingPass(ctx)
 }
 
@@ -385,37 +386,42 @@ func (r *Renderer) renderLightingPass(ctx renderCtx) {
 }
 
 func (r *Renderer) renderAmbientLight(ctx renderCtx, light *Light) {
-	// presentation := r.ambientLightPresentation
-	// presentation.Program.Use()
+	presentation := r.ambientLightPresentation
+	presentation.Program.Use()
 
-	// 	gl.UniformMatrix4fv(presentation.ProjectionMatrixLocation, 1, false, &ctx.projectionMatrix[0])
-	// 	gl.UniformMatrix4fv(presentation.CameraMatrixLocation, 1, false, &ctx.cameraMatrix[0])
-	// 	gl.UniformMatrix4fv(presentation.ViewMatrixLocation, 1, false, &ctx.viewMatrix[0])
+	wasmgl.UniformMatrix4fv(presentation.ProjectionMatrixLocation, false, ctx.projectionMatrix[:])
+	wasmgl.UniformMatrix4fv(presentation.CameraMatrixLocation, false, ctx.cameraMatrix[:])
+	wasmgl.UniformMatrix4fv(presentation.ViewMatrixLocation, false, ctx.viewMatrix[:])
 
-	// 	textureUnit := uint32(0)
+	textureUnit := 0
 
-	// 	gl.BindTextureUnit(textureUnit, r.geometryAlbedoTexture.ID())
-	// 	gl.Uniform1i(presentation.FramebufferDraw0Location, int32(textureUnit))
-	// 	textureUnit++
+	wasmgl.ActiveTexture(wasmgl.TEXTURE0 + textureUnit)
+	r.geometryAlbedoTexture.Use()
+	wasmgl.Uniform1i(presentation.FramebufferDraw0Location, textureUnit)
+	textureUnit++
 
-	// 	gl.BindTextureUnit(textureUnit, r.geometryNormalTexture.ID())
-	// 	gl.Uniform1i(presentation.FramebufferDraw1Location, int32(textureUnit))
-	// 	textureUnit++
+	wasmgl.ActiveTexture(wasmgl.TEXTURE0 + textureUnit)
+	r.geometryNormalTexture.Use()
+	wasmgl.Uniform1i(presentation.FramebufferDraw1Location, textureUnit)
+	textureUnit++
 
-	// 	gl.BindTextureUnit(textureUnit, r.geometryDepthTexture.ID())
-	// 	gl.Uniform1i(presentation.FramebufferDepthLocation, int32(textureUnit))
-	// 	textureUnit++
+	wasmgl.ActiveTexture(wasmgl.TEXTURE0 + textureUnit)
+	r.geometryDepthTexture.Use()
+	wasmgl.Uniform1i(presentation.FramebufferDepthLocation, textureUnit)
+	textureUnit++
 
-	// 	gl.BindTextureUnit(textureUnit, light.reflectionTexture.ID())
-	// 	gl.Uniform1i(presentation.ReflectionTextureLocation, int32(textureUnit))
-	// 	textureUnit++
+	wasmgl.ActiveTexture(wasmgl.TEXTURE0 + textureUnit)
+	light.reflectionTexture.Use()
+	wasmgl.Uniform1i(presentation.ReflectionTextureLocation, textureUnit)
+	textureUnit++
 
-	// 	gl.BindTextureUnit(textureUnit, light.refractionTexture.ID())
-	// 	gl.Uniform1i(presentation.RefractionTextureLocation, int32(textureUnit))
-	// 	textureUnit++
+	wasmgl.ActiveTexture(wasmgl.TEXTURE0 + textureUnit)
+	light.refractionTexture.Use()
+	wasmgl.Uniform1i(presentation.RefractionTextureLocation, textureUnit)
+	textureUnit++
 
-	// 	gl.BindVertexArray(r.quadMesh.VertexArray.ID())
-	// 	gl.DrawElements(r.quadMesh.Primitive, r.quadMesh.IndexCount, gl.UNSIGNED_SHORT, gl.PtrOffset(r.quadMesh.IndexOffsetBytes))
+	r.quadMesh.VertexArray.Use()
+	wasmgl.DrawElements(r.quadMesh.Primitive, r.quadMesh.IndexCount, wasmgl.UNSIGNED_SHORT, r.quadMesh.IndexOffsetBytes)
 }
 
 func (r *Renderer) renderDirectionalLight(ctx renderCtx, light *Light) {
@@ -498,64 +504,70 @@ func (r *Renderer) renderForwardPass(ctx renderCtx) {
 	}
 }
 
-// func (r *Renderer) renderExposureProbePass(ctx renderCtx) {
-// 	if r.exposureSync != 0 {
-// 		status := gl.ClientWaitSync(r.exposureSync, gl.SYNC_FLUSH_COMMANDS_BIT, 0)
-// 		switch status {
-// 		case gl.ALREADY_SIGNALED, gl.CONDITION_SATISFIED:
-// 			data := make([]float32, 4)
-// 			gl.GetNamedBufferSubData(r.exposureBuffer.ID(), 0, 4*4, gl.Ptr(&data[0]))
-// 			brightness := 0.2126*data[0] + 0.7152*data[1] + 0.0722*data[2]
-// 			if brightness < 0.001 {
-// 				brightness = 0.001
-// 			}
-// 			r.exposureTarget = 1.0 / (3.14 * brightness)
-// 			if r.exposureTarget > ctx.camera.maxExposure {
-// 				r.exposureTarget = ctx.camera.maxExposure
-// 			}
-// 			if r.exposureTarget < ctx.camera.minExposure {
-// 				r.exposureTarget = ctx.camera.minExposure
-// 			}
-// 			gl.DeleteSync(r.exposureSync)
-// 			r.exposureSync = 0
-// 		case gl.WAIT_FAILED:
-// 			r.exposureSync = 0
-// 		}
-// 	}
+func (r *Renderer) renderExposureProbePass(ctx renderCtx) {
+	if r.exposureSync.Valid() {
+		status := wasmgl.ClientWaitSync(r.exposureSync, wasmgl.SYNC_FLUSH_COMMANDS_BIT, 0)
+		switch status {
+		case wasmgl.ALREADY_SIGNALED, wasmgl.CONDITION_SATISFIED:
+			data := make([]float32, 4)
+			r.exposureBuffer.Use()
+			wasmgl.GetBufferSubData(wasmgl.PIXEL_PACK_BUFFER, 0, data)
+			wasmgl.BindBuffer(wasmgl.PIXEL_PACK_BUFFER, wasmgl.NilBuffer)
+			brightness := 0.2126*data[0] + 0.7152*data[1] + 0.0722*data[2]
+			if brightness < 0.001 {
+				brightness = 0.001
+			}
+			r.exposureTarget = 1.0 / (3.14 * brightness)
+			if r.exposureTarget > ctx.camera.maxExposure {
+				r.exposureTarget = ctx.camera.maxExposure
+			}
+			if r.exposureTarget < ctx.camera.minExposure {
+				r.exposureTarget = ctx.camera.minExposure
+			}
+			wasmgl.DeleteSync(r.exposureSync)
+			r.exposureSync = wasmgl.NilSync
+		case wasmgl.WAIT_FAILED:
+			r.exposureSync = wasmgl.NilSync
+		}
+	}
 
-// 	ctx.camera.exposure = mix(ctx.camera.exposure, r.exposureTarget, float32(0.01))
+	ctx.camera.exposure = mix(ctx.camera.exposure, r.exposureTarget, float32(0.01))
 
-// 	if r.exposureSync == 0 {
-// 		r.exposureFramebuffer.Use()
+	if !r.exposureSync.Valid() {
+		r.exposureFramebuffer.Use()
 
-// 		gl.Viewport(0, 0, r.framebufferWidth, r.framebufferHeight)
-// 		gl.Disable(gl.DEPTH_TEST)
-// 		gl.DepthMask(false)
-// 		gl.Enable(gl.CULL_FACE)
+		wasmgl.Viewport(0, 0, r.framebufferWidth, r.framebufferHeight)
+		wasmgl.Disable(wasmgl.DEPTH_TEST)
+		wasmgl.DepthMask(false)
+		wasmgl.Enable(wasmgl.CULL_FACE)
 
-// 		r.exposureFramebuffer.ClearColor(0, sprec.ZeroVec4())
+		wasmgl.ClearColor(0.0, 0.0, 0.0, 0.0)
+		wasmgl.Clear(wasmgl.COLOR_BUFFER_BIT)
 
-// 		presentation := r.exposurePresentation
-// 		program := presentation.Program
-// 		program.Use()
+		presentation := r.exposurePresentation
+		program := presentation.Program
+		program.Use()
 
-// 		textureUnit := uint32(0)
+		textureUnit := 0
 
-// 		gl.BindTextureUnit(textureUnit, r.lightingAlbedoTexture.ID())
-// 		gl.Uniform1i(presentation.FramebufferDraw0Location, int32(textureUnit))
-// 		textureUnit++
+		wasmgl.ActiveTexture(wasmgl.TEXTURE0 + textureUnit)
+		r.lightingAlbedoTexture.Use()
+		wasmgl.Uniform1i(presentation.FramebufferDraw0Location, textureUnit)
+		textureUnit++
 
-// 		gl.BindVertexArray(r.quadMesh.VertexArray.ID())
-// 		gl.DrawElements(r.quadMesh.Primitive, r.quadMesh.IndexCount, gl.UNSIGNED_SHORT, gl.PtrOffset(r.quadMesh.IndexOffsetBytes))
+		r.quadMesh.VertexArray.Use()
+		wasmgl.DrawElements(r.quadMesh.Primitive, r.quadMesh.IndexCount, wasmgl.UNSIGNED_SHORT, r.quadMesh.IndexOffsetBytes)
 
-// 		gl.TextureBarrier()
+		// 		gl.TextureBarrier()
 
-// 		gl.BindBuffer(gl.PIXEL_PACK_BUFFER, r.exposureBuffer.ID())
-// 		gl.GetTextureImage(r.exposureAlbedoTexture.ID(), 0, gl.RGBA, gl.FLOAT, 4*4, gl.PtrOffset(0))
-// 		r.exposureSync = gl.FenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0)
-// 		gl.BindBuffer(gl.PIXEL_PACK_BUFFER, 0)
-// 	}
-// }
+		r.exposureBuffer.Use()
+		wasmgl.ReadPixels(0, 0, 1, 1, wasmgl.RGBA, wasmgl.FLOAT, 0)
+		r.exposureSync = wasmgl.FenceSync(wasmgl.SYNC_GPU_COMMANDS_COMPLETE, 0)
+		wasmgl.BindBuffer(wasmgl.PIXEL_PACK_BUFFER, wasmgl.NilBuffer)
+
+		r.screenFramebuffer.Use()
+	}
+}
 
 func (r *Renderer) renderPostprocessingPass(ctx renderCtx) {
 	r.screenFramebuffer.Use()
@@ -580,7 +592,7 @@ func (r *Renderer) renderPostprocessingPass(ctx renderCtx) {
 	wasmgl.DrawElements(r.quadMesh.Primitive, r.quadMesh.IndexCount, wasmgl.UNSIGNED_SHORT, r.quadMesh.IndexOffsetBytes)
 }
 
-// // TODO: Move to gomath
-// func mix(a, b, amount float32) float32 {
-// 	return a*(1.0-amount) + b*amount
-// }
+// TODO: Move to gomath
+func mix(a, b, amount float32) float32 {
+	return a*(1.0-amount) + b*amount
+}

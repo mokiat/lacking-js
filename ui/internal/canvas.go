@@ -66,7 +66,7 @@ func (c *Canvas) ResizeFramebuffer(width, height int) {
 func (c *Canvas) Begin() {
 	c.currentLayer = c.topLayer
 
-	wasmgl.BindFramebuffer(wasmgl.FRAMEBUFFER, wasmgl.NullFramebuffer)
+	wasmgl.BindFramebuffer(wasmgl.FRAMEBUFFER, wasmgl.NilFramebuffer)
 	wasmgl.ClearDepth(1.0)
 	wasmgl.Clear(wasmgl.DEPTH_BUFFER_BIT)
 

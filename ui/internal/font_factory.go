@@ -270,7 +270,7 @@ func (f *FontFactory) CreateFont(font *opentype.Font) *Font {
 	wasmgl.CopyTexSubImage2D(wasmgl.TEXTURE_2D, 0, 0, 0, 0, 0, fontImageSize, fontImageSize)
 	wasmgl.GenerateMipmap(wasmgl.TEXTURE_2D)
 
-	wasmgl.BindFramebuffer(wasmgl.FRAMEBUFFER, wasmgl.NullFramebuffer)
+	wasmgl.BindFramebuffer(wasmgl.FRAMEBUFFER, wasmgl.NilFramebuffer)
 
 	return &Font{
 		familyName:    reader.FontFamilyName(),

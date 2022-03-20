@@ -36,7 +36,7 @@ func (a *VertexArray) Allocate(info VertexArrayAllocateInfo) {
 		info.IndexBuffer.Use()
 	}
 
-	wasmgl.BindVertexArray(wasmgl.NullVertexArray)
+	wasmgl.BindVertexArray(wasmgl.NilVertexArray)
 }
 
 func (a *VertexArray) Use() {

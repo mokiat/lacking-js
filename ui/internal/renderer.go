@@ -512,14 +512,14 @@ func (r *Renderer) End() {
 		material.program.Use()
 		wasmgl.Uniform4f(material.clipDistancesLocation, subMesh.clipBounds.X, subMesh.clipBounds.Y, subMesh.clipBounds.Z, subMesh.clipBounds.W)
 		wasmgl.UniformMatrix4fv(material.transformMatrixLocation, false, transformMatrix[:])
-		if material.textureTransformMatrixLocation.Valid() {
+		if material.textureTransformMatrixLocation.IsValid() {
 			wasmgl.UniformMatrix4fv(material.textureTransformMatrixLocation, false, textureTransformMatrix[:])
 		}
 		wasmgl.UniformMatrix4fv(material.projectionMatrixLocation, false, projectionMatrix[:])
-		if material.colorLocation.Valid() {
+		if material.colorLocation.IsValid() {
 			wasmgl.Uniform4f(material.colorLocation, subMesh.color.X, subMesh.color.Y, subMesh.color.Z, subMesh.color.W)
 		}
-		if material.textureLocation.Valid() {
+		if material.textureLocation.IsValid() {
 			wasmgl.ActiveTexture(wasmgl.TEXTURE0)
 			subMesh.texture.Use()
 			wasmgl.Uniform1i(material.textureLocation, 0)
