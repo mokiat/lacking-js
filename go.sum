@@ -24,6 +24,8 @@ github.com/lucasb-eyer/go-colorful v1.0.3/go.mod h1:R4dSotOR9KMtayYi1e77YzuveK+i
 github.com/mdouchement/hdr v0.2.3/go.mod h1:2Yb3JAST9c66wTLZ1vQrejU5sDeOC+ukXVs1pFAUtPo=
 github.com/mokiat/gomath v0.1.0 h1:wSBt+R4mT+9ndA3iPGKxWRAI+G/8Nmdic2xiCFC6hvc=
 github.com/mokiat/gomath v0.1.0/go.mod h1:KWlJ2no76F4c6nrnJ7VFwdMKtzbmQXfYuDzwJsm/Xng=
+github.com/mokiat/lacking v0.3.0 h1:6fO6BsAS/+VXYx5pb+kzd4FecMZdfDDlX8jNWeykpZI=
+github.com/mokiat/lacking v0.3.0/go.mod h1:ciPML4bGfMVmfCly5GRPQjeUnwgoZkTNEHGC+DjT6OY=
 github.com/mokiat/wasmgl v0.1.0 h1:V+AMKR64/GmOwOffwEZZ3zzA4p9+RXzMSTYnYHEE17M=
 github.com/mokiat/wasmgl v0.1.0/go.mod h1:utJ7aFkGdxmUhh99cWinjB2LXdQWqGcakfZ2GKEczLQ=
 github.com/nxadm/tail v1.4.4/go.mod h1:kenIhsEOeOJmVchQTgglprH7qJGnHDVpk1VPCcaMI8A=
