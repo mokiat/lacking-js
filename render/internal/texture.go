@@ -1,0 +1,160 @@
+package internal
+
+import (
+	"github.com/mokiat/lacking/render"
+	"github.com/mokiat/wasmgl"
+)
+
+func NewColorTexture2D(info render.ColorTexture2DInfo) *Texture {
+	raw := wasmgl.CreateTexture()
+	wasmgl.BindTexture(wasmgl.TEXTURE_2D, raw)
+	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_WRAP_S, glWrap(info.Wrapping))
+	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_WRAP_T, glWrap(info.Wrapping))
+	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_MIN_FILTER, glFilter(info.Filtering, info.Mipmapping))
+	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_MAG_FILTER, glFilter(info.Filtering, false))
+
+	levels := glMipmapLevels(info.Width, info.Height, info.Mipmapping)
+	internalFormat := glInternalFormat(info.Format, info.GammaCorrection)
+	wasmgl.TexStorage2D(wasmgl.TEXTURE_2D, levels, internalFormat, info.Width, info.Height)
+
+	if info.Data != nil {
+		dataFormat := glDataFormat(info.Format)
+		componentType := glDataComponentType(info.Format)
+		wasmgl.TexSubImage2D(wasmgl.TEXTURE_2D, 0, 0, 0, info.Width, info.Height, dataFormat, componentType, info.Data)
+
+		if info.Mipmapping {
+			wasmgl.GenerateMipmap(wasmgl.TEXTURE_2D)
+		}
+	}
+
+	return &Texture{
+		raw:  raw,
+		kind: wasmgl.TEXTURE_2D,
+	}
+}
+
+func NewDepthTexture2D(info render.DepthTexture2DInfo) *Texture {
+	raw := wasmgl.CreateTexture()
+	wasmgl.BindTexture(wasmgl.TEXTURE_2D, raw)
+	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_WRAP_S, wasmgl.CLAMP_TO_EDGE)
+	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_WRAP_T, wasmgl.CLAMP_TO_EDGE)
+	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_MIN_FILTER, wasmgl.NEAREST)
+	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_MAG_FILTER, wasmgl.NEAREST)
+	wasmgl.TexStorage2D(wasmgl.TEXTURE_2D, 1, wasmgl.DEPTH_COMPONENT24, info.Width, info.Height)
+	return &Texture{
+		raw: raw,
+	}
+}
+
+func NewStencilTexture2D(info render.StencilTexture2DInfo) *Texture {
+	raw := wasmgl.CreateTexture()
+	wasmgl.BindTexture(wasmgl.TEXTURE_2D, raw)
+	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_WRAP_S, wasmgl.CLAMP_TO_EDGE)
+	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_WRAP_T, wasmgl.CLAMP_TO_EDGE)
+	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_MIN_FILTER, wasmgl.NEAREST)
+	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_MAG_FILTER, wasmgl.NEAREST)
+	wasmgl.TexStorage2D(wasmgl.TEXTURE_2D, 1, wasmgl.STENCIL_INDEX8, info.Width, info.Height)
+	return &Texture{
+		raw:  raw,
+		kind: wasmgl.TEXTURE_2D,
+	}
+}
+
+func NewDepthStencilTexture2D(info render.DepthStencilTexture2DInfo) *Texture {
+	raw := wasmgl.CreateTexture()
+	wasmgl.BindTexture(wasmgl.TEXTURE_2D, raw)
+	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_WRAP_S, wasmgl.CLAMP_TO_EDGE)
+	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_WRAP_T, wasmgl.CLAMP_TO_EDGE)
+	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_MIN_FILTER, wasmgl.NEAREST)
+	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_MAG_FILTER, wasmgl.NEAREST)
+	wasmgl.TexStorage2D(wasmgl.TEXTURE_2D, 1, wasmgl.DEPTH24_STENCIL8, info.Width, info.Height)
+	return &Texture{
+		raw:  raw,
+		kind: wasmgl.TEXTURE_2D,
+	}
+}
+
+type Texture struct {
+	raw  wasmgl.Texture
+	kind int
+}
+
+func (t *Texture) Release() {
+	wasmgl.DeleteTexture(t.raw)
+	t.raw = wasmgl.NilTexture
+}
+
+func glWrap(wrap render.WrapMode) int {
+	switch wrap {
+	case render.WrapModeClamp:
+		return wasmgl.CLAMP_TO_EDGE
+	case render.WrapModeRepeat:
+		return wasmgl.REPEAT
+	case render.WrapModeMirroredRepeat:
+		return wasmgl.MIRRORED_REPEAT
+	default:
+		return wasmgl.CLAMP_TO_EDGE
+	}
+}
+
+func glFilter(filter render.FilterMode, mipmaps bool) int {
+	switch filter {
+	case render.FilterModeNearest:
+		if mipmaps {
+			return wasmgl.NEAREST_MIPMAP_NEAREST
+		}
+		return wasmgl.NEAREST
+	case render.FilterModeLinear, render.FilterModeAnisotropic:
+		if mipmaps {
+			return wasmgl.LINEAR_MIPMAP_LINEAR
+		}
+		return wasmgl.LINEAR
+	default:
+		return wasmgl.NEAREST
+	}
+}
+
+func glMipmapLevels(width, height int, mipmapping bool) int {
+	if !mipmapping {
+		return 1
+	}
+	count := int(1)
+	for width > 1 || height > 1 {
+		width /= 2
+		height /= 2
+		count++
+	}
+	return count
+}
+
+func glInternalFormat(format render.DataFormat, gammaCorrection bool) int {
+	switch format {
+	case render.DataFormatRGBA8:
+		if gammaCorrection {
+			return wasmgl.SRGB8_ALPHA8
+		}
+		return wasmgl.RGBA8
+	case render.DataFormatRGBA32F:
+		return wasmgl.RGBA32F
+	default:
+		return wasmgl.RGBA8
+	}
+}
+
+func glDataFormat(format render.DataFormat) int {
+	switch format {
+	default:
+		return wasmgl.RGBA
+	}
+}
+
+func glDataComponentType(format render.DataFormat) int {
+	switch format {
+	case render.DataFormatRGBA8:
+		return wasmgl.UNSIGNED_BYTE
+	case render.DataFormatRGBA32F:
+		return wasmgl.FLOAT
+	default:
+		return wasmgl.UNSIGNED_BYTE
+	}
+}

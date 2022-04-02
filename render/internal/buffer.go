@@ -1,0 +1,53 @@
+package internal
+
+import (
+	"github.com/mokiat/lacking/render"
+	"github.com/mokiat/wasmgl"
+)
+
+func NewVertexBuffer(info render.BufferInfo) *Buffer {
+	return newBuffer(info, wasmgl.ARRAY_BUFFER)
+}
+
+func NewIndexBuffer(info render.BufferInfo) *Buffer {
+	return newBuffer(info, wasmgl.ELEMENT_ARRAY_BUFFER)
+}
+
+func newBuffer(info render.BufferInfo, kind int) *Buffer {
+	raw := wasmgl.CreateBuffer()
+	wasmgl.BindBuffer(kind, raw)
+	if info.Data != nil {
+		wasmgl.BufferData(kind, info.Data, glBufferUsage(info.Dynamic))
+	} else {
+		data := make([]byte, info.Size) // FIXME: Use proper BufferData overload
+		wasmgl.BufferData(kind, data, glBufferUsage(info.Dynamic))
+	}
+	return &Buffer{
+		raw:  raw,
+		kind: kind,
+	}
+}
+
+type Buffer struct {
+	raw  wasmgl.Buffer
+	kind int
+}
+
+func (b *Buffer) Update(info render.BufferUpdateInfo) {
+	wasmgl.BindBuffer(b.kind, b.raw)
+	wasmgl.BufferSubData(b.kind, info.Offset, info.Data)
+}
+
+func (b *Buffer) Release() {
+	wasmgl.DeleteBuffer(b.raw)
+	b.raw = wasmgl.NilBuffer
+	b.kind = 0
+}
+
+func glBufferUsage(dynamic bool) int {
+	if dynamic {
+		return wasmgl.DYNAMIC_DRAW
+	} else {
+		return wasmgl.STATIC_DRAW
+	}
+}

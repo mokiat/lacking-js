@@ -48,7 +48,6 @@ func Run(cfg *Config, controller app.Controller) error {
 
 	// TODO: Make graphics library configurable
 	err := wasmgl.InitFromCanvas(htmlCanvas,
-		wasmgl.WithOptionAlpha(false),
 		wasmgl.WithOptionPowerPreference(wasmgl.PowerPreferenceHighPerformance),
 	)
 	if err != nil {

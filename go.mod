@@ -1,6 +1,6 @@
 module github.com/mokiat/lacking-js
 
-go 1.17
+go 1.18
 
 require (
 	github.com/mokiat/gomath v0.1.0
@@ -10,3 +10,5 @@ require (
 )
 
 require golang.org/x/text v0.3.6 // indirect
+
+replace github.com/mokiat/lacking => ../lacking

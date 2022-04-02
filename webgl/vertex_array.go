@@ -4,10 +4,6 @@ import (
 	"github.com/mokiat/wasmgl"
 )
 
-var (
-	gl string // TODO: REMOVE
-)
-
 func NewVertexArray() *VertexArray {
 	return &VertexArray{}
 }
