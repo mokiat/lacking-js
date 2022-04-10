@@ -11,4 +11,6 @@ require (
 
 require golang.org/x/text v0.3.6 // indirect
 
+replace github.com/mokiat/gomath => ../gomath
 replace github.com/mokiat/lacking => ../lacking
+replace github.com/mokiat/wasmgl => ../wasmgl

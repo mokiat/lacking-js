@@ -31,6 +31,7 @@ func NewFragmentShader(info render.ShaderInfo) *Shader {
 }
 
 type Shader struct {
+	render.ShaderObject
 	raw wasmgl.Shader
 }
 

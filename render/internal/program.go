@@ -10,7 +10,8 @@ import (
 
 func NewProgram(info render.ProgramInfo) *Program {
 	program := &Program{
-		raw: wasmgl.CreateProgram(),
+		raw:      wasmgl.CreateProgram(),
+		uniforms: make(map[*UniformLocation]struct{}),
 	}
 	if vertexShader, ok := info.VertexShader.(*Shader); ok {
 		wasmgl.AttachShader(program.raw, vertexShader.raw)
@@ -23,20 +24,35 @@ func NewProgram(info render.ProgramInfo) *Program {
 	if err := program.link(); err != nil {
 		log.Error("Program link error: %v", err)
 	}
+	program.id = programs.Allocate(program)
 	return program
 }
 
 type Program struct {
-	raw wasmgl.Program
+	render.ProgramObject
+	id       uint32
+	raw      wasmgl.Program
+	uniforms map[*UniformLocation]struct{}
 }
 
 func (p *Program) UniformLocation(name string) render.UniformLocation {
-	return wasmgl.GetUniformLocation(p.raw, name)
+	result := &UniformLocation{
+		raw: wasmgl.GetUniformLocation(p.raw, name),
+	}
+	result.id = int32(locations.Allocate(result))
+	p.uniforms[result] = struct{}{}
+	return result
 }
 
 func (p *Program) Release() {
+	for uniform := range p.uniforms {
+		locations.Release(uint32(uniform.id))
+	}
+	p.uniforms = nil
+	programs.Release(p.id)
 	wasmgl.DeleteProgram(p.raw)
 	p.raw = wasmgl.NilProgram
+	p.id = 0
 }
 
 func (p *Program) link() error {
@@ -54,4 +70,9 @@ func (p *Program) isLinkSuccessful() bool {
 
 func (p *Program) getInfoLog() string {
 	return wasmgl.GetProgramInfoLog(p.raw)
+}
+
+type UniformLocation struct {
+	id  int32
+	raw wasmgl.UniformLocation
 }

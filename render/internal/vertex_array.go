@@ -25,20 +25,26 @@ func NewVertexArray(info render.VertexArrayInfo) *VertexArray {
 		wasmgl.BindBuffer(indexBuffer.kind, indexBuffer.raw)
 	}
 
-	return &VertexArray{
+	result := &VertexArray{
 		raw:         raw,
 		indexFormat: wasmgl.UNSIGNED_SHORT, // FIXME
 	}
+	result.id = vertexArrays.Allocate(result)
+	return result
 }
 
 type VertexArray struct {
+	render.VertexArrayObject
+	id          uint32
 	raw         wasmgl.VertexArray
 	indexFormat int // TODO
 }
 
 func (a *VertexArray) Release() {
+	vertexArrays.Release(a.id)
 	wasmgl.DeleteVertexArray(a.raw)
 	a.raw = wasmgl.NilVertexArray
+	a.id = 0
 }
 
 func glAttribParams(format render.VertexAttributeFormat) (int, int, bool) {

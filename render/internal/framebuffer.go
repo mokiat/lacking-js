@@ -10,12 +10,14 @@ func NewFramebuffer(info render.FramebufferInfo) *Framebuffer {
 	raw := wasmgl.CreateFramebuffer()
 	wasmgl.BindFramebuffer(wasmgl.FRAMEBUFFER, raw)
 
+	var activeDrawBuffers [4]bool
 	var drawBuffers []int
 	for i, attachment := range info.ColorAttachments {
 		if colorAttachment, ok := attachment.(*Texture); ok {
 			attachmentID := wasmgl.COLOR_ATTACHMENT0 + int(i)
 			wasmgl.FramebufferTexture2D(wasmgl.FRAMEBUFFER, attachmentID, wasmgl.TEXTURE_2D, colorAttachment.raw, 0)
 			drawBuffers = append(drawBuffers, attachmentID)
+			activeDrawBuffers[i] = true
 		}
 	}
 
@@ -37,20 +39,30 @@ func NewFramebuffer(info render.FramebufferInfo) *Framebuffer {
 		log.Error("Framebuffer is incomplete")
 	}
 
-	return &Framebuffer{
-		raw: raw,
+	result := &Framebuffer{
+		raw:               raw,
+		activeDrawBuffers: activeDrawBuffers,
 	}
+	result.id = framebuffers.Allocate(result)
+	return result
 }
 
 var DefaultFramebuffer = &Framebuffer{
+	id:  0,
 	raw: wasmgl.NilFramebuffer,
 }
 
 type Framebuffer struct {
-	raw wasmgl.Framebuffer
+	render.FramebufferObject
+	id                uint32
+	raw               wasmgl.Framebuffer
+	activeDrawBuffers [4]bool
 }
 
 func (f *Framebuffer) Release() {
+	framebuffers.Release(f.id)
 	wasmgl.DeleteFramebuffer(f.raw)
 	f.raw = wasmgl.NilFramebuffer
+	f.id = 0
+	f.activeDrawBuffers = [4]bool{}
 }

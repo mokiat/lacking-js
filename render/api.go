@@ -34,7 +34,7 @@ func (a *API) CreateColorTexture2D(info render.ColorTexture2DInfo) render.Textur
 }
 
 func (a *API) CreateColorTextureCube(info render.ColorTextureCubeInfo) render.Texture {
-	panic("TODO")
+	return internal.NewColorTextureCube(info)
 }
 
 func (a *API) CreateDepthTexture2D(info render.DepthTexture2DInfo) render.Texture {
@@ -69,6 +69,10 @@ func (a *API) CreateIndexBuffer(info render.BufferInfo) render.Buffer {
 	return internal.NewIndexBuffer(info)
 }
 
+func (a *API) CreatePixelTransferBuffer(info render.BufferInfo) render.Buffer {
+	return internal.NewPixelTransferBuffer(info)
+}
+
 func (a *API) CreateVertexArray(info render.VertexArrayInfo) render.VertexArray {
 	return internal.NewVertexArray(info)
 }
@@ -77,20 +81,36 @@ func (a *API) CreatePipeline(info render.PipelineInfo) render.Pipeline {
 	return internal.NewPipeline(info)
 }
 
+func (a *API) CreateCommandQueue() render.CommandQueue {
+	return internal.NewCommandQueue()
+}
+
 func (a *API) BeginRenderPass(info render.RenderPassInfo) {
 	a.renderer.BeginRenderPass(info)
+}
+
+func (a *API) EndRenderPass() {
+	a.renderer.EndRenderPass()
 }
 
 func (a *API) BindPipeline(pipeline render.Pipeline) {
 	a.renderer.BindPipeline(pipeline)
 }
 
-func (a *API) Uniform4f(location render.UniformLocation, values [4]float32) {
-	a.renderer.Uniform4f(location, values)
+func (a *API) Uniform1f(location render.UniformLocation, value float32) {
+	a.renderer.Uniform1f(location, value)
 }
 
 func (a *API) Uniform1i(location render.UniformLocation, value int) {
 	a.renderer.Uniform1i(location, value)
+}
+
+func (a *API) Uniform3f(location render.UniformLocation, values [3]float32) {
+	a.renderer.Uniform3f(location, values)
+}
+
+func (a *API) Uniform4f(location render.UniformLocation, values [4]float32) {
+	a.renderer.Uniform4f(location, values)
 }
 
 func (a *API) UniformMatrix4f(location render.UniformLocation, values [16]float32) {
@@ -109,6 +129,10 @@ func (a *API) DrawIndexed(indexOffset, indexCount, instanceCount int) {
 	a.renderer.DrawIndexed(indexOffset, indexCount, instanceCount)
 }
 
-func (a *API) EndRenderPass() {
-	a.renderer.EndRenderPass()
+func (a *API) CopyContentToTexture(info render.CopyContentToTextureInfo) {
+	a.renderer.CopyContentToTexture(info)
+}
+
+func (a *API) SubmitQueue(queue render.CommandQueue) {
+	a.renderer.SubmitQueue(queue.(*internal.CommandQueue))
 }

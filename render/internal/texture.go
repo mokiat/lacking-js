@@ -27,10 +27,12 @@ func NewColorTexture2D(info render.ColorTexture2DInfo) *Texture {
 		}
 	}
 
-	return &Texture{
+	result := &Texture{
 		raw:  raw,
 		kind: wasmgl.TEXTURE_2D,
 	}
+	result.id = textures.Allocate(result)
+	return result
 }
 
 func NewDepthTexture2D(info render.DepthTexture2DInfo) *Texture {
@@ -41,9 +43,11 @@ func NewDepthTexture2D(info render.DepthTexture2DInfo) *Texture {
 	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_MIN_FILTER, wasmgl.NEAREST)
 	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_MAG_FILTER, wasmgl.NEAREST)
 	wasmgl.TexStorage2D(wasmgl.TEXTURE_2D, 1, wasmgl.DEPTH_COMPONENT24, info.Width, info.Height)
-	return &Texture{
+	result := &Texture{
 		raw: raw,
 	}
+	result.id = textures.Allocate(result)
+	return result
 }
 
 func NewStencilTexture2D(info render.StencilTexture2DInfo) *Texture {
@@ -54,10 +58,12 @@ func NewStencilTexture2D(info render.StencilTexture2DInfo) *Texture {
 	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_MIN_FILTER, wasmgl.NEAREST)
 	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_MAG_FILTER, wasmgl.NEAREST)
 	wasmgl.TexStorage2D(wasmgl.TEXTURE_2D, 1, wasmgl.STENCIL_INDEX8, info.Width, info.Height)
-	return &Texture{
+	result := &Texture{
 		raw:  raw,
 		kind: wasmgl.TEXTURE_2D,
 	}
+	result.id = textures.Allocate(result)
+	return result
 }
 
 func NewDepthStencilTexture2D(info render.DepthStencilTexture2DInfo) *Texture {
@@ -68,20 +74,72 @@ func NewDepthStencilTexture2D(info render.DepthStencilTexture2DInfo) *Texture {
 	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_MIN_FILTER, wasmgl.NEAREST)
 	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_MAG_FILTER, wasmgl.NEAREST)
 	wasmgl.TexStorage2D(wasmgl.TEXTURE_2D, 1, wasmgl.DEPTH24_STENCIL8, info.Width, info.Height)
-	return &Texture{
+	result := &Texture{
 		raw:  raw,
 		kind: wasmgl.TEXTURE_2D,
 	}
+	result.id = textures.Allocate(result)
+	return result
+}
+
+func NewColorTextureCube(info render.ColorTextureCubeInfo) *Texture {
+	raw := wasmgl.CreateTexture()
+	wasmgl.BindTexture(wasmgl.TEXTURE_CUBE_MAP, raw)
+	wasmgl.TexParameteri(wasmgl.TEXTURE_CUBE_MAP, wasmgl.TEXTURE_WRAP_S, wasmgl.CLAMP_TO_EDGE)
+	wasmgl.TexParameteri(wasmgl.TEXTURE_CUBE_MAP, wasmgl.TEXTURE_WRAP_T, wasmgl.CLAMP_TO_EDGE)
+	wasmgl.TexParameteri(wasmgl.TEXTURE_CUBE_MAP, wasmgl.TEXTURE_MIN_FILTER, glFilter(info.Filtering, info.Mipmapping))
+	wasmgl.TexParameteri(wasmgl.TEXTURE_CUBE_MAP, wasmgl.TEXTURE_MAG_FILTER, glFilter(info.Filtering, false)) // no mipmaps when magnification
+
+	levels := glMipmapLevels(info.Dimension, info.Dimension, info.Mipmapping)
+	internalFormat := glInternalFormat(info.Format, info.GammaCorrection)
+	wasmgl.TexStorage2D(wasmgl.TEXTURE_CUBE_MAP, levels, internalFormat, info.Dimension, info.Dimension)
+
+	dataFormat := glDataFormat(info.Format)
+	componentType := glDataComponentType(info.Format)
+	if info.RightSideData != nil {
+		wasmgl.TexSubImage2D(wasmgl.TEXTURE_CUBE_MAP_POSITIVE_X, 0, 0, 0, info.Dimension, info.Dimension, dataFormat, componentType, info.RightSideData)
+	}
+	if info.LeftSideData != nil {
+		wasmgl.TexSubImage2D(wasmgl.TEXTURE_CUBE_MAP_NEGATIVE_X, 0, 0, 0, info.Dimension, info.Dimension, dataFormat, componentType, info.LeftSideData)
+	}
+	if info.BottomSideData != nil {
+		wasmgl.TexSubImage2D(wasmgl.TEXTURE_CUBE_MAP_POSITIVE_Y, 0, 0, 0, info.Dimension, info.Dimension, dataFormat, componentType, info.BottomSideData)
+	}
+	if info.TopSideData != nil {
+		wasmgl.TexSubImage2D(wasmgl.TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, 0, 0, info.Dimension, info.Dimension, dataFormat, componentType, info.TopSideData)
+	}
+	if info.FrontSideData != nil {
+		wasmgl.TexSubImage2D(wasmgl.TEXTURE_CUBE_MAP_POSITIVE_Z, 0, 0, 0, info.Dimension, info.Dimension, dataFormat, componentType, info.FrontSideData)
+	}
+	if info.BackSideData != nil {
+		wasmgl.TexSubImage2D(wasmgl.TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, 0, 0, info.Dimension, info.Dimension, dataFormat, componentType, info.BackSideData)
+	}
+
+	// TODO: Move as separate command
+	// if info.Mipmapping {
+	// 	gl.GenerateTextureMipmap(id)
+	// }
+
+	result := &Texture{
+		raw:  raw,
+		kind: wasmgl.TEXTURE_CUBE_MAP,
+	}
+	result.id = textures.Allocate(result)
+	return result
 }
 
 type Texture struct {
+	render.TextureObject
+	id   uint32
 	raw  wasmgl.Texture
 	kind int
 }
 
 func (t *Texture) Release() {
+	textures.Release(t.id)
 	wasmgl.DeleteTexture(t.raw)
 	t.raw = wasmgl.NilTexture
+	t.id = 0
 }
 
 func glWrap(wrap render.WrapMode) int {
@@ -143,6 +201,10 @@ func glInternalFormat(format render.DataFormat, gammaCorrection bool) int {
 
 func glDataFormat(format render.DataFormat) int {
 	switch format {
+	case render.DataFormatRGBA8:
+		return wasmgl.RGBA
+	case render.DataFormatRGBA32F:
+		return wasmgl.RGBA32F
 	default:
 		return wasmgl.RGBA
 	}

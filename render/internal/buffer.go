@@ -13,6 +13,10 @@ func NewIndexBuffer(info render.BufferInfo) *Buffer {
 	return newBuffer(info, wasmgl.ELEMENT_ARRAY_BUFFER)
 }
 
+func NewPixelTransferBuffer(info render.BufferInfo) render.Buffer {
+	return newBuffer(info, wasmgl.PIXEL_PACK_BUFFER)
+}
+
 func newBuffer(info render.BufferInfo, kind int) *Buffer {
 	raw := wasmgl.CreateBuffer()
 	wasmgl.BindBuffer(kind, raw)
@@ -22,13 +26,17 @@ func newBuffer(info render.BufferInfo, kind int) *Buffer {
 		data := make([]byte, info.Size) // FIXME: Use proper BufferData overload
 		wasmgl.BufferData(kind, data, glBufferUsage(info.Dynamic))
 	}
-	return &Buffer{
+	result := &Buffer{
 		raw:  raw,
 		kind: kind,
 	}
+	result.id = buffers.Allocate(result)
+	return result
 }
 
 type Buffer struct {
+	render.BufferObject
+	id   uint32
 	raw  wasmgl.Buffer
 	kind int
 }
@@ -39,9 +47,11 @@ func (b *Buffer) Update(info render.BufferUpdateInfo) {
 }
 
 func (b *Buffer) Release() {
+	buffers.Release(b.id)
 	wasmgl.DeleteBuffer(b.raw)
 	b.raw = wasmgl.NilBuffer
 	b.kind = 0
+	b.id = 0
 }
 
 func glBufferUsage(dynamic bool) int {
