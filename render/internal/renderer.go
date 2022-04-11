@@ -93,7 +93,7 @@ func (r *Renderer) EndRenderPass() {
 	if len(r.invalidateAttachments) > 0 {
 		// TODO: When the viewport is just part of the framebuffer
 		// we should use glInvalidateNamedFramebufferSubData
-		wasmgl.InvalidateFramebuffer(wasmgl.FRAMEBUFFER, r.invalidateAttachments)
+		// wasmgl.InvalidateFramebuffer(wasmgl.FRAMEBUFFER, r.invalidateAttachments)
 	}
 
 	// FIXME

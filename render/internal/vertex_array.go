@@ -10,7 +10,6 @@ import (
 func NewVertexArray(info render.VertexArrayInfo) *VertexArray {
 	raw := wasmgl.CreateVertexArray()
 	wasmgl.BindVertexArray(raw)
-
 	for _, attribute := range info.Attributes {
 		binding := info.Bindings[attribute.Binding]
 		if vertexBuffer, ok := binding.VertexBuffer.(*Buffer); ok {
@@ -20,10 +19,10 @@ func NewVertexArray(info render.VertexArrayInfo) *VertexArray {
 		count, compType, normalized := glAttribParams(attribute.Format)
 		wasmgl.VertexAttribPointer(attribute.Location, count, compType, normalized, binding.Stride, attribute.Offset)
 	}
-
 	if indexBuffer, ok := info.IndexBuffer.(*Buffer); ok {
 		wasmgl.BindBuffer(indexBuffer.kind, indexBuffer.raw)
 	}
+	wasmgl.BindVertexArray(wasmgl.NilVertexArray)
 
 	result := &VertexArray{
 		raw:         raw,

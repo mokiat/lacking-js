@@ -48,8 +48,12 @@ func NewFramebuffer(info render.FramebufferInfo) *Framebuffer {
 }
 
 var DefaultFramebuffer = &Framebuffer{
-	id:  0,
-	raw: wasmgl.NilFramebuffer,
+	raw:               wasmgl.NilFramebuffer,
+	activeDrawBuffers: [4]bool{true, false, false, false},
+}
+
+func init() {
+	DefaultFramebuffer.id = framebuffers.Allocate(DefaultFramebuffer)
 }
 
 type Framebuffer struct {
