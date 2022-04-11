@@ -196,9 +196,9 @@ func (r *Renderer) DrawIndexed(indexOffset, indexCount, instanceCount int) {
 
 func (r *Renderer) CopyContentToTexture(info render.CopyContentToTextureInfo) {
 	intTexture := info.Texture.(*Texture)
-	wasmgl.BindTexture(wasmgl.TEXTURE_2D, intTexture.raw)
+	wasmgl.BindTexture(intTexture.kind, intTexture.raw)
 	wasmgl.CopyTexSubImage2D(
-		wasmgl.TEXTURE_2D,
+		intTexture.kind,
 		info.TextureLevel,
 		info.TextureX,
 		info.TextureY,
@@ -208,7 +208,7 @@ func (r *Renderer) CopyContentToTexture(info render.CopyContentToTextureInfo) {
 		info.Height,
 	)
 	if info.GenerateMipmaps {
-		wasmgl.GenerateMipmap(wasmgl.TEXTURE_2D)
+		wasmgl.GenerateMipmap(intTexture.kind)
 	}
 }
 

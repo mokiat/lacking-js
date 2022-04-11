@@ -44,7 +44,8 @@ func NewDepthTexture2D(info render.DepthTexture2DInfo) *Texture {
 	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_MAG_FILTER, wasmgl.NEAREST)
 	wasmgl.TexStorage2D(wasmgl.TEXTURE_2D, 1, wasmgl.DEPTH_COMPONENT24, info.Width, info.Height)
 	result := &Texture{
-		raw: raw,
+		raw:  raw,
+		kind: wasmgl.TEXTURE_2D,
 	}
 	result.id = textures.Allocate(result)
 	return result
@@ -57,7 +58,8 @@ func NewStencilTexture2D(info render.StencilTexture2DInfo) *Texture {
 	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_WRAP_T, wasmgl.CLAMP_TO_EDGE)
 	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_MIN_FILTER, wasmgl.NEAREST)
 	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_MAG_FILTER, wasmgl.NEAREST)
-	wasmgl.TexStorage2D(wasmgl.TEXTURE_2D, 1, wasmgl.STENCIL_INDEX8, info.Width, info.Height)
+	// NOTE: Firefox does not support wasmgl.STENCIL_INDEX8
+	wasmgl.TexStorage2D(wasmgl.TEXTURE_2D, 1, wasmgl.DEPTH24_STENCIL8, info.Width, info.Height)
 	result := &Texture{
 		raw:  raw,
 		kind: wasmgl.TEXTURE_2D,
