@@ -1,13 +1,13 @@
 package game
 
 import (
-	"github.com/mokiat/lacking-js/webgl"
+	"github.com/mokiat/lacking-js/internal"
 	"github.com/mokiat/lacking/game/graphics"
 )
 
 func newDirectionalLightShaderSet() graphics.ShaderSet {
-	vsBuilder := webgl.NewShaderSourceBuilder(directionalLightVertexShader)
-	fsBuilder := webgl.NewShaderSourceBuilder(directionalLightFragmentShader)
+	vsBuilder := internal.NewShaderSourceBuilder(directionalLightVertexShader)
+	fsBuilder := internal.NewShaderSourceBuilder(directionalLightFragmentShader)
 	return graphics.ShaderSet{
 		VertexShader:   vsBuilder.Build,
 		FragmentShader: fsBuilder.Build,

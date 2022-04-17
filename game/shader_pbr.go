@@ -1,13 +1,13 @@
 package game
 
 import (
-	"github.com/mokiat/lacking-js/webgl"
+	"github.com/mokiat/lacking-js/internal"
 	"github.com/mokiat/lacking/game/graphics"
 )
 
 func newPBRShaderSet(definition graphics.PBRMaterialDefinition) graphics.ShaderSet {
-	vsBuilder := webgl.NewShaderSourceBuilder(pbrGeometryVertexShader)
-	fsBuilder := webgl.NewShaderSourceBuilder(pbrGeometryFragmentShader)
+	vsBuilder := internal.NewShaderSourceBuilder(pbrGeometryVertexShader)
+	fsBuilder := internal.NewShaderSourceBuilder(pbrGeometryFragmentShader)
 	if definition.AlbedoTexture != nil {
 		vsBuilder.AddFeature("USES_ALBEDO_TEXTURE")
 		fsBuilder.AddFeature("USES_ALBEDO_TEXTURE")

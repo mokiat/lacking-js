@@ -1,18 +1,18 @@
 package ui
 
 import (
-	"github.com/mokiat/lacking-js/webgl"
+	"github.com/mokiat/lacking-js/internal"
 	"github.com/mokiat/lacking/ui"
 )
 
 func newContourShaders() ui.ShaderSet {
 	return ui.ShaderSet{
 		VertexShader: func() string {
-			builder := webgl.NewShaderSourceBuilder(contourMaterialVertexShaderTemplate)
+			builder := internal.NewShaderSourceBuilder(contourMaterialVertexShaderTemplate)
 			return builder.Build()
 		},
 		FragmentShader: func() string {
-			builder := webgl.NewShaderSourceBuilder(contourMaterialFragmentShaderTemplate)
+			builder := internal.NewShaderSourceBuilder(contourMaterialFragmentShaderTemplate)
 			return builder.Build()
 		},
 	}

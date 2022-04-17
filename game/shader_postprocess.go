@@ -3,13 +3,13 @@ package game
 import (
 	"fmt"
 
-	"github.com/mokiat/lacking-js/webgl"
+	"github.com/mokiat/lacking-js/internal"
 	"github.com/mokiat/lacking/game/graphics"
 )
 
 func newPostprocessingShaderSet(mapping graphics.ToneMapping) graphics.ShaderSet {
-	vsBuilder := webgl.NewShaderSourceBuilder(tonePostprocessingVertexShader)
-	fsBuilder := webgl.NewShaderSourceBuilder(tonePostprocessingFragmentShader)
+	vsBuilder := internal.NewShaderSourceBuilder(tonePostprocessingVertexShader)
+	fsBuilder := internal.NewShaderSourceBuilder(tonePostprocessingFragmentShader)
 	switch mapping {
 	case graphics.ReinhardToneMapping:
 		fsBuilder.AddFeature("MODE_REINHARD")

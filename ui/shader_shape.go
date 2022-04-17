@@ -1,18 +1,18 @@
 package ui
 
 import (
-	"github.com/mokiat/lacking-js/webgl"
+	"github.com/mokiat/lacking-js/internal"
 	"github.com/mokiat/lacking/ui"
 )
 
 func newShapeShaders() ui.ShaderSet {
 	return ui.ShaderSet{
 		VertexShader: func() string {
-			builder := webgl.NewShaderSourceBuilder(shapeMaterialVertexShaderTemplate)
+			builder := internal.NewShaderSourceBuilder(shapeMaterialVertexShaderTemplate)
 			return builder.Build()
 		},
 		FragmentShader: func() string {
-			builder := webgl.NewShaderSourceBuilder(shapeMaterialFragmentShaderTemplate)
+			builder := internal.NewShaderSourceBuilder(shapeMaterialFragmentShaderTemplate)
 			return builder.Build()
 		},
 	}
@@ -21,11 +21,11 @@ func newShapeShaders() ui.ShaderSet {
 func newShapeBlankShaders() ui.ShaderSet {
 	return ui.ShaderSet{
 		VertexShader: func() string {
-			builder := webgl.NewShaderSourceBuilder(shapeBlankMaterialVertexShaderTemplate)
+			builder := internal.NewShaderSourceBuilder(shapeBlankMaterialVertexShaderTemplate)
 			return builder.Build()
 		},
 		FragmentShader: func() string {
-			builder := webgl.NewShaderSourceBuilder(shapeBlankMaterialFragmentShaderTemplate)
+			builder := internal.NewShaderSourceBuilder(shapeBlankMaterialFragmentShaderTemplate)
 			return builder.Build()
 		},
 	}

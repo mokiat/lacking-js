@@ -1,13 +1,13 @@
 package game
 
 import (
-	"github.com/mokiat/lacking-js/webgl"
+	"github.com/mokiat/lacking-js/internal"
 	"github.com/mokiat/lacking/game/graphics"
 )
 
 func newAmbientLightShaderSet() graphics.ShaderSet {
-	vsBuilder := webgl.NewShaderSourceBuilder(ambientLightVertexShader)
-	fsBuilder := webgl.NewShaderSourceBuilder(ambientLightFragmentShader)
+	vsBuilder := internal.NewShaderSourceBuilder(ambientLightVertexShader)
+	fsBuilder := internal.NewShaderSourceBuilder(ambientLightFragmentShader)
 	return graphics.ShaderSet{
 		VertexShader:   vsBuilder.Build,
 		FragmentShader: fsBuilder.Build,
