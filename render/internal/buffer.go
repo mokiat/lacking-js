@@ -21,10 +21,9 @@ func newBuffer(info render.BufferInfo, kind int) *Buffer {
 	raw := wasmgl.CreateBuffer()
 	wasmgl.BindBuffer(kind, raw)
 	if info.Data != nil {
-		wasmgl.BufferData(kind, info.Data, glBufferUsage(info.Dynamic))
+		wasmgl.BufferData(kind, len(info.Data), info.Data, glBufferUsage(info.Dynamic))
 	} else {
-		data := make([]byte, info.Size) // FIXME: Use proper BufferData overload
-		wasmgl.BufferData(kind, data, glBufferUsage(info.Dynamic))
+		wasmgl.BufferData(kind, info.Size, nil, glBufferUsage(info.Dynamic))
 	}
 	result := &Buffer{
 		raw:  raw,

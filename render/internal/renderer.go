@@ -22,6 +22,7 @@ type Renderer struct {
 
 func (r *Renderer) BeginRenderPass(info render.RenderPassInfo) {
 	r.framebuffer = info.Framebuffer.(*Framebuffer)
+	isDefaultFramebuffer := r.framebuffer == DefaultFramebuffer
 
 	wasmgl.BindFramebuffer(wasmgl.FRAMEBUFFER, r.framebuffer.raw)
 	wasmgl.Viewport(
@@ -32,37 +33,29 @@ func (r *Renderer) BeginRenderPass(info render.RenderPassInfo) {
 	)
 
 	for i, attachment := range info.Colors {
-		if i == 0 && (attachment.LoadOp == render.LoadOperationClear) {
-			wasmgl.ClearColor(attachment.ClearValue[0], attachment.ClearValue[1], attachment.ClearValue[2], attachment.ClearValue[3])
-			wasmgl.Clear(wasmgl.COLOR_BUFFER_BIT)
+		if r.framebuffer.activeDrawBuffers[i] && (attachment.LoadOp == render.LoadOperationClear) {
+			wasmgl.ClearBufferfv(wasmgl.COLOR, i, attachment.ClearValue[:])
 		}
-		// if r.framebuffer.activeDrawBuffers[i] && (attachment.LoadOp == render.LoadOperationClear) {
-		// 	gl.ClearNamedFramebufferfv(r.framebuffer.id, gl.COLOR, int32(i), &attachment.ClearValue[0])
-		// }
 	}
 
 	clearDepth := info.DepthLoadOp == render.LoadOperationClear
 	clearStencil := info.StencilLoadOp == render.LoadOperationClear
 
 	if clearDepth && clearStencil {
-		wasmgl.ClearDepth(info.DepthClearValue)
-		wasmgl.ClearStencil(info.StencilClearValue)
-		wasmgl.Clear(wasmgl.DEPTH_BUFFER_BIT | wasmgl.STENCIL_BUFFER_BIT)
-		// 	depthValue := info.DepthClearValue
-		// 	stencilValue := int32(info.StencilClearValue)
-		// 	gl.ClearNamedFramebufferfi(r.framebuffer.id, gl.DEPTH_STENCIL, 0, depthValue, stencilValue)
+		depthValue := info.DepthClearValue
+		stencilValue := int32(info.StencilClearValue)
+		wasmgl.ColorMask(true, true, true, true)
+		wasmgl.ClearBufferfi(wasmgl.DEPTH_STENCIL, 0, depthValue, stencilValue)
 	} else {
 		if clearDepth {
-			wasmgl.ClearDepth(info.DepthClearValue)
-			wasmgl.Clear(wasmgl.DEPTH_BUFFER_BIT)
-			// 		depthValue := info.DepthClearValue
-			// 		gl.ClearNamedFramebufferfv(r.framebuffer.id, gl.DEPTH, 0, &depthValue)
+			wasmgl.DepthMask(true)
+			depthValues := [1]float32{info.DepthClearValue}
+			wasmgl.ClearBufferfv(wasmgl.DEPTH, 0, depthValues[:])
 		}
 		if clearStencil {
-			wasmgl.ClearStencil(info.StencilClearValue)
-			wasmgl.Clear(wasmgl.STENCIL_BUFFER_BIT)
-			// 		stencilValue := uint32(info.StencilClearValue)
-			// 		gl.ClearNamedFramebufferuiv(r.framebuffer.id, gl.STENCIL, 0, &stencilValue)
+			wasmgl.StencilMaskSeparate(wasmgl.FRONT_AND_BACK, 0xFF)
+			stencilValues := [1]int32{int32(info.StencilClearValue)}
+			wasmgl.ClearBufferiv(wasmgl.STENCIL, 0, stencilValues[:])
 		}
 	}
 
@@ -73,34 +66,40 @@ func (r *Renderer) BeginRenderPass(info render.RenderPassInfo) {
 
 	for i, attachment := range info.Colors {
 		if r.framebuffer.activeDrawBuffers[i] && (attachment.StoreOp == render.StoreOperationDontCare) {
-			r.invalidateAttachments = append(r.invalidateAttachments, wasmgl.COLOR_ATTACHMENT0+i)
+			if isDefaultFramebuffer {
+				if i == 0 {
+					r.invalidateAttachments = append(r.invalidateAttachments, wasmgl.COLOR)
+				}
+			} else {
+				r.invalidateAttachments = append(r.invalidateAttachments, wasmgl.COLOR_ATTACHMENT0+i)
+			}
 		}
 	}
 
-	if invalidateDepth && invalidateStencil {
+	if invalidateDepth && invalidateStencil && !isDefaultFramebuffer {
 		r.invalidateAttachments = append(r.invalidateAttachments, wasmgl.DEPTH_STENCIL_ATTACHMENT)
 	} else {
 		if invalidateDepth {
-			r.invalidateAttachments = append(r.invalidateAttachments, wasmgl.DEPTH_ATTACHMENT)
+			if isDefaultFramebuffer {
+				r.invalidateAttachments = append(r.invalidateAttachments, wasmgl.DEPTH)
+			} else {
+				r.invalidateAttachments = append(r.invalidateAttachments, wasmgl.DEPTH_ATTACHMENT)
+			}
 		}
 		if invalidateStencil {
-			r.invalidateAttachments = append(r.invalidateAttachments, wasmgl.STENCIL_ATTACHMENT)
+			if isDefaultFramebuffer {
+				r.invalidateAttachments = append(r.invalidateAttachments, wasmgl.STENCIL)
+			} else {
+				r.invalidateAttachments = append(r.invalidateAttachments, wasmgl.STENCIL_ATTACHMENT)
+			}
 		}
 	}
 }
 
 func (r *Renderer) EndRenderPass() {
 	if len(r.invalidateAttachments) > 0 {
-		// TODO: When the viewport is just part of the framebuffer
-		// we should use glInvalidateNamedFramebufferSubData
-		// wasmgl.InvalidateFramebuffer(wasmgl.FRAMEBUFFER, r.invalidateAttachments)
+		wasmgl.InvalidateFramebuffer(wasmgl.FRAMEBUFFER, r.invalidateAttachments)
 	}
-
-	// FIXME
-	wasmgl.Disable(wasmgl.BLEND)
-	wasmgl.DepthMask(true)
-	wasmgl.ColorMask(true, true, true, true)
-
 	r.framebuffer = DefaultFramebuffer
 }
 
