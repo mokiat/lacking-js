@@ -2,13 +2,13 @@ package game
 
 import (
 	"github.com/mokiat/lacking-js/webgl"
-	"github.com/mokiat/lacking/game/graphics/renderapi/plugin"
+	"github.com/mokiat/lacking/game/graphics"
 )
 
-func newAmbientLightShaderSet() plugin.ShaderSet {
+func newAmbientLightShaderSet() graphics.ShaderSet {
 	vsBuilder := webgl.NewShaderSourceBuilder(ambientLightVertexShader)
 	fsBuilder := webgl.NewShaderSourceBuilder(ambientLightFragmentShader)
-	return plugin.ShaderSet{
+	return graphics.ShaderSet{
 		VertexShader:   vsBuilder.Build,
 		FragmentShader: fsBuilder.Build,
 	}

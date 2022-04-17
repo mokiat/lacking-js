@@ -2,13 +2,13 @@ package game
 
 import (
 	"github.com/mokiat/lacking-js/webgl"
-	"github.com/mokiat/lacking/game/graphics/renderapi/plugin"
+	"github.com/mokiat/lacking/game/graphics"
 )
 
-func newExposureShaderSet() plugin.ShaderSet {
+func newExposureShaderSet() graphics.ShaderSet {
 	vsBuilder := webgl.NewShaderSourceBuilder(exposureVertexShader)
 	fsBuilder := webgl.NewShaderSourceBuilder(exposureFragmentShader)
-	return plugin.ShaderSet{
+	return graphics.ShaderSet{
 		VertexShader:   vsBuilder.Build,
 		FragmentShader: fsBuilder.Build,
 	}

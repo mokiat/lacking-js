@@ -2,13 +2,13 @@ package game
 
 import (
 	"github.com/mokiat/lacking-js/webgl"
-	"github.com/mokiat/lacking/game/graphics/renderapi/plugin"
+	"github.com/mokiat/lacking/game/graphics"
 )
 
-func newSkycolorShaderSet() plugin.ShaderSet {
+func newSkycolorShaderSet() graphics.ShaderSet {
 	vsBuilder := webgl.NewShaderSourceBuilder(colorSkyboxVertexShader)
 	fsBuilder := webgl.NewShaderSourceBuilder(colorSkyboxFragmentShader)
-	return plugin.ShaderSet{
+	return graphics.ShaderSet{
 		VertexShader:   vsBuilder.Build,
 		FragmentShader: fsBuilder.Build,
 	}

@@ -3,10 +3,9 @@ package game
 import (
 	"github.com/mokiat/lacking-js/webgl"
 	"github.com/mokiat/lacking/game/graphics"
-	"github.com/mokiat/lacking/game/graphics/renderapi/plugin"
 )
 
-func newPBRShaderSet(definition graphics.PBRMaterialDefinition) plugin.ShaderSet {
+func newPBRShaderSet(definition graphics.PBRMaterialDefinition) graphics.ShaderSet {
 	vsBuilder := webgl.NewShaderSourceBuilder(pbrGeometryVertexShader)
 	fsBuilder := webgl.NewShaderSourceBuilder(pbrGeometryFragmentShader)
 	if definition.AlbedoTexture != nil {
@@ -15,7 +14,7 @@ func newPBRShaderSet(definition graphics.PBRMaterialDefinition) plugin.ShaderSet
 		vsBuilder.AddFeature("USES_TEX_COORD0")
 		fsBuilder.AddFeature("USES_TEX_COORD0")
 	}
-	return plugin.ShaderSet{
+	return graphics.ShaderSet{
 		VertexShader:   vsBuilder.Build,
 		FragmentShader: fsBuilder.Build,
 	}
