@@ -1,9 +1,9 @@
 package ui
 
-import "github.com/mokiat/lacking/ui/renderapi/plugin"
+import "github.com/mokiat/lacking/ui"
 
-func NewShaderCollection() plugin.ShaderCollection {
-	return plugin.ShaderCollection{
+func NewShaderCollection() ui.ShaderCollection {
+	return ui.ShaderCollection{
 		ShapeMaterial:      newShapeShaders(),
 		ShapeBlankMaterial: newShapeBlankShaders(),
 		ContourMaterial:    newContourShaders(),

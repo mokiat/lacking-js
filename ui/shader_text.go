@@ -2,11 +2,11 @@ package ui
 
 import (
 	"github.com/mokiat/lacking-js/webgl"
-	"github.com/mokiat/lacking/ui/renderapi/plugin"
+	"github.com/mokiat/lacking/ui"
 )
 
-func newTextShaders() plugin.ShaderSet {
-	return plugin.ShaderSet{
+func newTextShaders() ui.ShaderSet {
+	return ui.ShaderSet{
 		VertexShader: func() string {
 			builder := webgl.NewShaderSourceBuilder(textMaterialVertexShaderTemplate)
 			return builder.Build()

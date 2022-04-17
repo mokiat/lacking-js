@@ -2,11 +2,11 @@ package ui
 
 import (
 	"github.com/mokiat/lacking-js/webgl"
-	"github.com/mokiat/lacking/ui/renderapi/plugin"
+	"github.com/mokiat/lacking/ui"
 )
 
-func newShapeShaders() plugin.ShaderSet {
-	return plugin.ShaderSet{
+func newShapeShaders() ui.ShaderSet {
+	return ui.ShaderSet{
 		VertexShader: func() string {
 			builder := webgl.NewShaderSourceBuilder(shapeMaterialVertexShaderTemplate)
 			return builder.Build()
@@ -18,8 +18,8 @@ func newShapeShaders() plugin.ShaderSet {
 	}
 }
 
-func newShapeBlankShaders() plugin.ShaderSet {
-	return plugin.ShaderSet{
+func newShapeBlankShaders() ui.ShaderSet {
+	return ui.ShaderSet{
 		VertexShader: func() string {
 			builder := webgl.NewShaderSourceBuilder(shapeBlankMaterialVertexShaderTemplate)
 			return builder.Build()
