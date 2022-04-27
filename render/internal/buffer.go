@@ -14,7 +14,15 @@ func NewIndexBuffer(info render.BufferInfo) *Buffer {
 }
 
 func NewPixelTransferBuffer(info render.BufferInfo) render.Buffer {
-	return newBuffer(info, wasmgl.PIXEL_PACK_BUFFER)
+	raw := wasmgl.CreateBuffer()
+	wasmgl.BindBuffer(wasmgl.PIXEL_PACK_BUFFER, raw)
+	wasmgl.BufferData(wasmgl.PIXEL_PACK_BUFFER, info.Size, nil, wasmgl.DYNAMIC_READ)
+	result := &Buffer{
+		raw:  raw,
+		kind: wasmgl.PIXEL_PACK_BUFFER,
+	}
+	result.id = buffers.Allocate(result)
+	return result
 }
 
 func newBuffer(info render.BufferInfo, kind int) *Buffer {
