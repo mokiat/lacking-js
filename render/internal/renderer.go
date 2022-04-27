@@ -263,6 +263,9 @@ func (r *Renderer) SubmitQueue(queue *CommandQueue) {
 		case CommandKindDrawIndexed:
 			command := PopCommand[CommandDrawIndexed](queue)
 			r.executeCommandDrawIndexed(command)
+		case CommandKindCopyContentToBuffer:
+			command := PopCommand[CommandCopyContentToBuffer](queue)
+			r.executeCommandCopyContentToBuffer(command)
 		default:
 			panic(fmt.Errorf("unknown command kind: %v", header.Kind))
 		}
@@ -477,5 +480,26 @@ func (r *Renderer) executeCommandDrawIndexed(command CommandDrawIndexed) {
 		r.indexType,
 		int(command.IndexOffset),
 		int(command.InstanceCount),
+	)
+}
+
+func (r *Renderer) executeCommandCopyContentToBuffer(command CommandCopyContentToBuffer) {
+	buffer := buffers.Get(command.BufferID)
+	wasmgl.BindBuffer(
+		buffer.kind,
+		buffer.raw,
+	)
+	wasmgl.ReadPixels(
+		int(command.X),
+		int(command.Y),
+		int(command.Width),
+		int(command.Height),
+		int(command.Format),
+		int(command.XType),
+		int(command.BufferOffset),
+	)
+	wasmgl.BindBuffer(
+		buffer.kind,
+		wasmgl.NilBuffer,
 	)
 }

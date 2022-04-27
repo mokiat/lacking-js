@@ -1,9 +1,11 @@
 package internal
 
 import (
+	"fmt"
 	"unsafe"
 
 	"github.com/mokiat/lacking/render"
+	"github.com/mokiat/wasmgl"
 )
 
 func NewCommandQueue() *CommandQueue {
@@ -140,6 +142,33 @@ func (q *CommandQueue) DrawIndexed(indexOffset, indexCount, instanceCount int) {
 	})
 }
 
+func (q *CommandQueue) CopyContentToBuffer(info render.CopyContentToBufferInfo) {
+	PushCommand(q, CommandHeader{
+		Kind: CommandKindCopyContentToBuffer,
+	})
+	var format, xtype uint32
+	switch info.Format {
+	case render.DataFormatRGBA8:
+		format = wasmgl.RGBA
+		xtype = wasmgl.UNSIGNED_BYTE
+	case render.DataFormatRGBA32F:
+		format = wasmgl.RGBA
+		xtype = wasmgl.FLOAT
+	default:
+		panic(fmt.Errorf("unsupported data format %v", info.Format))
+	}
+	PushCommand(q, CommandCopyContentToBuffer{
+		BufferID:     info.Buffer.(*Buffer).id,
+		X:            int32(info.X),
+		Y:            int32(info.Y),
+		Width:        int32(info.Width),
+		Height:       int32(info.Height),
+		Format:       format,
+		XType:        xtype,
+		BufferOffset: uint32(info.Offset),
+	})
+}
+
 func (q *CommandQueue) Release() {
 	q.data = nil
 }
@@ -189,6 +218,7 @@ const (
 	CommandKindTextureUnit
 	CommandKindDraw
 	CommandKindDrawIndexed
+	CommandKindCopyContentToBuffer
 )
 
 type CommandHeader struct {
@@ -336,4 +366,15 @@ type CommandDrawIndexed struct {
 	IndexOffset   int32
 	IndexCount    int32
 	InstanceCount int32
+}
+
+type CommandCopyContentToBuffer struct {
+	BufferID     uint32
+	X            int32
+	Y            int32
+	Width        int32
+	Height       int32
+	Format       uint32
+	XType        uint32
+	BufferOffset uint32
 }

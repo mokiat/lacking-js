@@ -45,6 +45,11 @@ func (b *Buffer) Update(info render.BufferUpdateInfo) {
 	wasmgl.BufferSubData(b.kind, info.Offset, info.Data)
 }
 
+func (b *Buffer) Fetch(info render.BufferFetchInfo) {
+	wasmgl.BindBuffer(b.kind, b.raw)
+	wasmgl.GetBufferSubData(b.kind, info.Offset, info.Target)
+}
+
 func (b *Buffer) Release() {
 	buffers.Release(b.id)
 	wasmgl.DeleteBuffer(b.raw)

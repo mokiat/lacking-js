@@ -136,3 +136,7 @@ func (a *API) CopyContentToTexture(info render.CopyContentToTextureInfo) {
 func (a *API) SubmitQueue(queue render.CommandQueue) {
 	a.renderer.SubmitQueue(queue.(*internal.CommandQueue))
 }
+
+func (a *API) CreateFence() render.Fence {
+	return internal.NewFence()
+}
