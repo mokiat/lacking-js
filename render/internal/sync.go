@@ -17,10 +17,10 @@ type Fence struct {
 }
 
 func (f *Fence) Status() render.FenceStatus {
-	switch wasmgl.ClientWaitSync(f.raw, wasmgl.SYNC_FLUSH_COMMANDS_BIT, 0) {
-	case wasmgl.ALREADY_SIGNALED, wasmgl.CONDITION_SATISFIED:
+	switch wasmgl.GetSyncParameter(f.raw, wasmgl.SYNC_STATUS) {
+	case wasmgl.SIGNALED:
 		return render.FenceStatusSuccess
-	case wasmgl.TIMEOUT_EXPIRED:
+	case wasmgl.UNSIGNALED:
 		return render.FenceStatusNotReady
 	default:
 		return render.FenceStatusDeviceLost
