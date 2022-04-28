@@ -10,11 +10,12 @@ func NewConfig(canvasID string) *Config {
 
 // Config represents an application window configuration.
 type Config struct {
-	canvasID   string
-	title      *string
-	width      *int
-	height     *int
-	fullscreen bool
+	canvasID     string
+	title        *string
+	width        *int
+	height       *int
+	fullscreen   bool
+	glExtensions []string
 }
 
 func (c *Config) Title() string {
@@ -56,4 +57,8 @@ func (c *Config) Fullscreen() bool {
 
 func (c *Config) SetFullscreen(fullscreen bool) {
 	c.fullscreen = fullscreen
+}
+
+func (c *Config) AddGLExtension(name string) {
+	c.glExtensions = append(c.glExtensions, name)
 }

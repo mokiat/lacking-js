@@ -48,11 +48,15 @@ func Run(cfg *Config, controller app.Controller) error {
 
 	// TODO: Make graphics library configurable
 	err := wasmgl.InitFromCanvas(htmlCanvas,
-		wasmgl.WithOptionAlpha(false),
 		wasmgl.WithOptionPowerPreference(wasmgl.PowerPreferenceHighPerformance),
 	)
 	if err != nil {
 		return fmt.Errorf("error initializing webgl: %w", err)
+	}
+	for _, ext := range cfg.glExtensions {
+		if wasmgl.GetExtension(ext) == nil {
+			return fmt.Errorf("extension %q not supported", ext)
+		}
 	}
 
 	l := newLoop(htmlDocument, htmlCanvas, controller)
