@@ -279,29 +279,35 @@ func (r *Renderer) executeCommandBindPipeline(command CommandBindPipeline) {
 	r.executeCommandTopology(command.Topology)
 	r.executeCommandCullTest(command.CullTest)
 	r.executeCommandFrontFace(command.FrontFace)
+	// TODO: Only if line-type topology
 	r.executeCommandLineWidth(command.LineWidth)
 	r.executeCommandDepthTest(command.DepthTest)
 	r.executeCommandDepthWrite(command.DepthWrite)
-	r.executeCommandDepthComparison(command.DepthComparison)
+	if command.DepthTest.Enabled {
+		r.executeCommandDepthComparison(command.DepthComparison)
+	}
 	r.executeCommandStencilTest(command.StencilTest)
-	// TODO: Optimize if equal except for face
-	r.executeCommandStencilFunc(command.StencilFuncFront)
-	r.executeCommandStencilFunc(command.StencilFuncBack)
-	// TODO: Optimize if equal except for face
-	r.executeCommandStencilOperation(command.StencilOpFront)
-	r.executeCommandStencilOperation(command.StencilOpBack)
-	// TODO: Optimize if equal except for face
-	r.executeCommandStencilMask(command.StencilMaskFront)
-	r.executeCommandStencilMask(command.StencilMaskBack)
+	if command.StencilTest.Enabled {
+		// TODO: Optimize if equal except for face
+		r.executeCommandStencilFunc(command.StencilFuncFront)
+		r.executeCommandStencilFunc(command.StencilFuncBack)
+		// TODO: Optimize if equal except for face
+		r.executeCommandStencilOperation(command.StencilOpFront)
+		r.executeCommandStencilOperation(command.StencilOpBack)
+		// TODO: Optimize if equal except for face
+		r.executeCommandStencilMask(command.StencilMaskFront)
+		r.executeCommandStencilMask(command.StencilMaskBack)
+	}
 	r.executeCommandColorWrite(command.ColorWrite)
+	// TODO: Only if non-zero mask
 	if command.BlendEnabled {
 		wasmgl.Enable(wasmgl.BLEND)
+		r.executeCommandBlendEquation(command.BlendEquation)
+		r.executeCommandBlendFunc(command.BlendFunc)
+		r.executeCommandBlendColor(command.BlendColor)
 	} else {
 		wasmgl.Disable(wasmgl.BLEND)
 	}
-	r.executeCommandBlendEquation(command.BlendEquation)
-	r.executeCommandBlendFunc(command.BlendFunc)
-	r.executeCommandBlendColor(command.BlendColor)
 	r.executeCommandBindVertexArray(command.VertexArray)
 }
 
