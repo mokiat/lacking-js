@@ -22,26 +22,20 @@ const contourMaterialVertexShaderTemplate = `
 layout(location = 0) in vec2 positionIn;
 layout(location = 2) in vec4 colorIn;
 
-uniform mat4 transformMatrixIn;
 uniform mat4 projectionMatrixIn;
-uniform vec4 clipDistancesIn;
+uniform mat4 transformMatrixIn;
+uniform mat4 clipMatrixIn;
 
-// out gl_PerVertex
-// {
-//   vec4 gl_Position;
-//   float gl_ClipDistance[4];
-// };
-
+smooth out vec4 clipDistancesInOut;
 smooth out vec4 colorInOut;
 
 void main()
 {
 	colorInOut = colorIn;
 	vec4 screenPosition = transformMatrixIn * vec4(positionIn, 0.0, 1.0);
-	// gl_ClipDistance[0] = screenPosition.x - clipDistancesIn.x; // left
-	// gl_ClipDistance[1] = clipDistancesIn.y - screenPosition.x; // right
-	// gl_ClipDistance[2] = screenPosition.y - clipDistancesIn.z; // top
-	// gl_ClipDistance[3] = clipDistancesIn.w - screenPosition.y; // bottom
+
+	clipDistancesInOut = clipMatrixIn * screenPosition;
+
 	gl_Position = projectionMatrixIn * screenPosition;
 }
 `
@@ -49,10 +43,16 @@ void main()
 const contourMaterialFragmentShaderTemplate = `
 layout(location = 0) out vec4 fragmentColor;
 
+smooth in vec4 clipDistancesInOut;
 smooth in vec4 colorInOut;
 
 void main()
 {
+	float dist = min(min(clipDistancesInOut.x, clipDistancesInOut.y), min(clipDistancesInOut.z, clipDistancesInOut.w));
+	if (dist < 0.0) {
+		discard;
+	}
+
 	fragmentColor = colorInOut;
 }
 `

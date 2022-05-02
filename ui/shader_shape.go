@@ -34,27 +34,21 @@ func newShapeBlankShaders() ui.ShaderSet {
 const shapeMaterialVertexShaderTemplate = `
 layout(location = 0) in vec2 positionIn;
 
-uniform mat4 transformMatrixIn;
-uniform mat4 textureTransformMatrixIn;
 uniform mat4 projectionMatrixIn;
-// uniform vec4 clipDistancesIn;
+uniform mat4 transformMatrixIn;
+uniform mat4 clipMatrixIn;
+uniform mat4 textureTransformMatrixIn;
 
+smooth out vec4 clipDistancesInOut;
 smooth out vec2 texCoordInOut;
-
-// out gl_PerVertex
-// {
-//   vec4 gl_Position;
-//   float gl_ClipDistance[4];
-// };
 
 void main()
 {
 	vec4 screenPosition = transformMatrixIn * vec4(positionIn, 0.0, 1.0);
 	texCoordInOut = (textureTransformMatrixIn * vec4(positionIn, 0.0, 1.0)).xy;
-	// gl_ClipDistance[0] = screenPosition.x - clipDistancesIn.x; // left
-	// gl_ClipDistance[1] = clipDistancesIn.y - screenPosition.x; // right
-	// gl_ClipDistance[2] = screenPosition.y - clipDistancesIn.z; // top
-	// gl_ClipDistance[3] = clipDistancesIn.w - screenPosition.y; // bottom
+
+	clipDistancesInOut = clipMatrixIn * screenPosition;
+
 	gl_Position = projectionMatrixIn * screenPosition;
 }
 `
@@ -65,10 +59,16 @@ layout(location = 0) out vec4 fragmentColor;
 uniform sampler2D textureIn;
 uniform vec4 colorIn;
 
+smooth in vec4 clipDistancesInOut;
 smooth in vec2 texCoordInOut;
 
 void main()
 {
+	float dist = min(min(clipDistancesInOut.x, clipDistancesInOut.y), min(clipDistancesInOut.z, clipDistancesInOut.w));
+	if (dist < 0.0) {
+		discard;
+	}
+
 	fragmentColor = texture(textureIn, texCoordInOut) * colorIn;
 }
 `
@@ -76,23 +76,18 @@ void main()
 const shapeBlankMaterialVertexShaderTemplate = `
 layout(location = 0) in vec2 positionIn;
 
-uniform mat4 transformMatrixIn;
 uniform mat4 projectionMatrixIn;
-// uniform vec4 clipDistancesIn;
+uniform mat4 transformMatrixIn;
+uniform mat4 clipMatrixIn;
 
-// out gl_PerVertex
-// {
-//   vec4 gl_Position;
-//   float gl_ClipDistance[4];
-// };
+smooth out vec4 clipDistancesInOut;
 
 void main()
 {
 	vec4 screenPosition = transformMatrixIn * vec4(positionIn, 0.0, 1.0);
-	// gl_ClipDistance[0] = screenPosition.x - clipDistancesIn.x; // left
-	// gl_ClipDistance[1] = clipDistancesIn.y - screenPosition.x; // right
-	// gl_ClipDistance[2] = screenPosition.y - clipDistancesIn.z; // top
-	// gl_ClipDistance[3] = clipDistancesIn.w - screenPosition.y; // bottom
+
+	clipDistancesInOut = clipMatrixIn * screenPosition;
+
 	gl_Position = projectionMatrixIn * screenPosition;
 }
 `
@@ -100,8 +95,15 @@ void main()
 const shapeBlankMaterialFragmentShaderTemplate = `
 layout(location = 0) out vec4 fragmentColor;
 
+smooth in vec4 clipDistancesInOut;
+
 void main()
 {
+	float dist = min(min(clipDistancesInOut.x, clipDistancesInOut.y), min(clipDistancesInOut.z, clipDistancesInOut.w));
+	if (dist < 0.0) {
+		discard;
+	}
+
 	fragmentColor = vec4(1.0, 1.0, 1.0, 1.0);
 }
 `
