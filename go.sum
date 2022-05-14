@@ -1,7 +1,7 @@
 github.com/mokiat/gomath v0.2.0 h1:ymEIRySh5aVHvqNJfnqJ1aiFNBHzUGy9801oJRLb5mk=
 github.com/mokiat/gomath v0.2.0/go.mod h1:HzUDh5PiQcvnXRAwMmdNOqUO3h6IdouLd2BhikJIXz4=
-github.com/mokiat/lacking v0.4.0 h1:ni075PNau8zqkGJNjfup3/vlaZw1Uy4Y71pR64DiTkU=
-github.com/mokiat/lacking v0.4.0/go.mod h1:pFUpHqzjxic/VZqKM8eky2gtR2EqvjMIe2uepFyE9Lg=
+github.com/mokiat/lacking v0.6.0 h1:C5IQN56e+9adAnDhHlz+nqP0sCoF2DlKbgpNLHQ318g=
+github.com/mokiat/lacking v0.6.0/go.mod h1:xu4IbBeAEG20u7iBA9Rz/vCYrbwGWyoL1j+ncnqIQ60=
 github.com/mokiat/wasmgl v0.3.0 h1:kGclhvEyEfUuhN7YuctBjkHKeZezVduWLkssuEgXYkE=
 github.com/mokiat/wasmgl v0.3.0/go.mod h1:Ikx+bDVpuq+OkvdDDwKI0pIluqK+kduVHJhRFBmmGrw=
 github.com/onsi/ginkgo/v2 v2.1.3 h1:e/3Cwtogj0HA+25nMP1jCMDIf8RtRYbGwGGuBIFztkc=

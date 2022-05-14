@@ -3,7 +3,7 @@ module github.com/mokiat/lacking-js
 go 1.18
 
 require (
-	github.com/mokiat/lacking v0.4.0
+	github.com/mokiat/lacking v0.6.0
 	github.com/mokiat/wasmgl v0.3.0
 )
 
