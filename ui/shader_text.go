@@ -56,13 +56,7 @@ void main()
 		discard;
 	}
 
-	float amount = pow(clamp(texture(textureIn, texCoordInOut).x, 0.0, 1.0), 0.5);
-	if (amount > 0.8) {
-		amount = 1.0;
-	}
-	if (amount < 0.2) {
-		amount = 0.0;
-	}
+	float amount = texture(textureIn, texCoordInOut).x;
 	fragmentColor = vec4(amount) * colorIn;
 }
 `
