@@ -205,10 +205,6 @@ func glInternalFormat(format render.DataFormat, gammaCorrection bool) int {
 
 func glDataFormat(format render.DataFormat) int {
 	switch format {
-	case render.DataFormatRGBA8:
-		return wasmgl.RGBA
-	case render.DataFormatRGBA32F:
-		return wasmgl.RGBA32F
 	default:
 		return wasmgl.RGBA
 	}
