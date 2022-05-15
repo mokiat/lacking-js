@@ -194,6 +194,8 @@ func glInternalFormat(format render.DataFormat, gammaCorrection bool) int {
 			return wasmgl.SRGB8_ALPHA8
 		}
 		return wasmgl.RGBA8
+	case render.DataFormatRGBA16F:
+		return wasmgl.RGBA16F
 	case render.DataFormatRGBA32F:
 		return wasmgl.RGBA32F
 	default:
@@ -216,6 +218,8 @@ func glDataComponentType(format render.DataFormat) int {
 	switch format {
 	case render.DataFormatRGBA8:
 		return wasmgl.UNSIGNED_BYTE
+	case render.DataFormatRGBA16F:
+		return wasmgl.HALF_FLOAT
 	case render.DataFormatRGBA32F:
 		return wasmgl.FLOAT
 	default:
