@@ -13,28 +13,35 @@ func NewRenderer() *Renderer {
 		isDirty:       true,
 		isInvalidated: true,
 		desiredState: &State{
-			CullTest:                   false,
-			CullFace:                   wasmgl.BACK,
-			FrontFace:                  wasmgl.CCW,
-			DepthTest:                  false,
-			DepthMask:                  true,
-			DepthComparison:            wasmgl.LESS,
-			StencilTest:                false,
-			StencilOpStencilFailFront:  wasmgl.KEEP,
-			StencilOpDepthFailFront:    wasmgl.KEEP,
-			StencilOpPassFront:         wasmgl.KEEP,
-			StencilOpStencilFailBack:   wasmgl.KEEP,
-			StencilOpDepthFailBack:     wasmgl.KEEP,
-			StencilOpPassBack:          wasmgl.KEEP,
-			StencilComparisonFuncFront: wasmgl.ALWAYS,
-			StencilComparisonRefFront:  0x00,
-			StencilComparisonMaskFront: 0xFF,
-			StencilComparisonFuncBack:  wasmgl.ALWAYS,
-			StencilComparisonRefBack:   0x00,
-			StencilComparisonMaskBack:  0xFF,
-			StencilMaskFront:           0xFF,
-			StencilMaskBack:            0xFF,
-			ColorMask:                  render.ColorMaskTrue,
+			CullTest:                    false,
+			CullFace:                    wasmgl.BACK,
+			FrontFace:                   wasmgl.CCW,
+			DepthTest:                   false,
+			DepthMask:                   true,
+			DepthComparison:             wasmgl.LESS,
+			StencilTest:                 false,
+			StencilOpStencilFailFront:   wasmgl.KEEP,
+			StencilOpDepthFailFront:     wasmgl.KEEP,
+			StencilOpPassFront:          wasmgl.KEEP,
+			StencilOpStencilFailBack:    wasmgl.KEEP,
+			StencilOpDepthFailBack:      wasmgl.KEEP,
+			StencilOpPassBack:           wasmgl.KEEP,
+			StencilComparisonFuncFront:  wasmgl.ALWAYS,
+			StencilComparisonRefFront:   0x00,
+			StencilComparisonMaskFront:  0xFF,
+			StencilComparisonFuncBack:   wasmgl.ALWAYS,
+			StencilComparisonRefBack:    0x00,
+			StencilComparisonMaskBack:   0xFF,
+			StencilMaskFront:            0xFF,
+			StencilMaskBack:             0xFF,
+			ColorMask:                   render.ColorMaskTrue,
+			Blending:                    false,
+			BlendModeRGB:                wasmgl.FUNC_ADD,
+			BlendModeAlpha:              wasmgl.FUNC_ADD,
+			BlendSourceFactorRGB:        wasmgl.ONE,
+			BlendDestinationFactorRGB:   wasmgl.ZERO,
+			BlendSourceFactorAlpha:      wasmgl.ONE,
+			BlendDestinationFactorAlpha: wasmgl.ZERO,
 		},
 		actualState: &State{},
 	}
@@ -377,15 +384,12 @@ func (r *Renderer) executeCommandBindPipeline(command CommandBindPipeline) {
 		r.executeCommandStencilMask(command.StencilMaskBack)
 	}
 	r.executeCommandColorWrite(command.ColorWrite)
-	// TODO: Only if non-zero mask
-	// isPermissiveMask := command.ColorWrite.Mask != render.ColorMaskFalse
+	r.desiredState.Blending = command.BlendEnabled
+	r.isDirty = true
 	if command.BlendEnabled {
-		wasmgl.Enable(wasmgl.BLEND)
+		r.executeCommandBlendColor(command.BlendColor)
 		r.executeCommandBlendEquation(command.BlendEquation)
 		r.executeCommandBlendFunc(command.BlendFunc)
-		r.executeCommandBlendColor(command.BlendColor)
-	} else {
-		wasmgl.Disable(wasmgl.BLEND)
 	}
 	r.executeCommandBindVertexArray(command.VertexArray)
 }
@@ -471,28 +475,22 @@ func (r *Renderer) executeCommandColorWrite(command CommandColorWrite) {
 }
 
 func (r *Renderer) executeCommandBlendColor(command CommandBlendColor) {
-	wasmgl.BlendColor(
-		command.Color[0],
-		command.Color[1],
-		command.Color[2],
-		command.Color[3],
-	)
+	r.desiredState.BlendColor = command.Color
+	r.isDirty = true
 }
 
 func (r *Renderer) executeCommandBlendEquation(command CommandBlendEquation) {
-	wasmgl.BlendEquationSeparate(
-		int(command.ModeRGB),
-		int(command.ModeAlpha),
-	)
+	r.desiredState.BlendModeRGB = int(command.ModeRGB)
+	r.desiredState.BlendModeAlpha = int(command.ModeAlpha)
+	r.isDirty = true
 }
 
 func (r *Renderer) executeCommandBlendFunc(command CommandBlendFunc) {
-	wasmgl.BlendFuncSeparate(
-		int(command.SourceFactorRGB),
-		int(command.DestinationFactorRGB),
-		int(command.SourceFactorAlpha),
-		int(command.DestinationFactorAlpha),
-	)
+	r.desiredState.BlendSourceFactorRGB = int(command.SourceFactorRGB)
+	r.desiredState.BlendDestinationFactorRGB = int(command.DestinationFactorRGB)
+	r.desiredState.BlendSourceFactorAlpha = int(command.SourceFactorAlpha)
+	r.desiredState.BlendDestinationFactorAlpha = int(command.DestinationFactorAlpha)
+	r.isDirty = true
 }
 
 func (r *Renderer) executeCommandBindVertexArray(command CommandBindVertexArray) {
@@ -609,6 +607,9 @@ func (r *Renderer) validateState() {
 		r.validateStencilComparison(forcedUpdate)
 		r.validateStencilMask(forcedUpdate)
 		r.validateColorMask(forcedUpdate)
+		r.validateBlending(forcedUpdate)
+		r.validateBlendEquation(forcedUpdate)
+		r.validateBlendFunc(forcedUpdate)
 	}
 	r.isDirty = false
 	r.isInvalidated = false
@@ -852,6 +853,71 @@ func (r *Renderer) validateColorMask(forcedUpdate bool) {
 			r.actualState.ColorMask[1],
 			r.actualState.ColorMask[2],
 			r.actualState.ColorMask[3],
+		)
+	}
+}
+
+func (r *Renderer) validateBlending(forcedUpdate bool) {
+	needsUpdate := forcedUpdate ||
+		(r.actualState.Blending != r.desiredState.Blending)
+
+	if needsUpdate {
+		r.actualState.Blending = r.desiredState.Blending
+		if r.actualState.Blending {
+			wasmgl.Enable(wasmgl.BLEND)
+		} else {
+			wasmgl.Disable(wasmgl.BLEND)
+		}
+	}
+}
+
+func (r *Renderer) validateBlendColor(forcedUpdate bool) {
+	needsUpdate := forcedUpdate ||
+		(r.actualState.BlendColor != r.desiredState.BlendColor)
+
+	if needsUpdate {
+		r.actualState.BlendColor = r.desiredState.BlendColor
+		wasmgl.BlendColor(
+			r.actualState.BlendColor[0],
+			r.actualState.BlendColor[1],
+			r.actualState.BlendColor[2],
+			r.actualState.BlendColor[3],
+		)
+	}
+}
+
+func (r *Renderer) validateBlendEquation(forcedUpdate bool) {
+	needsUpdate := forcedUpdate ||
+		(r.actualState.BlendModeRGB != r.desiredState.BlendModeRGB) ||
+		(r.actualState.BlendModeAlpha != r.desiredState.BlendModeAlpha)
+
+	if needsUpdate {
+		r.actualState.BlendModeRGB = r.desiredState.BlendModeRGB
+		r.actualState.BlendModeAlpha = r.desiredState.BlendModeAlpha
+		wasmgl.BlendEquationSeparate(
+			r.actualState.BlendModeRGB,
+			r.actualState.BlendModeAlpha,
+		)
+	}
+}
+
+func (r *Renderer) validateBlendFunc(forcedUpdate bool) {
+	needsUpdate := forcedUpdate ||
+		(r.actualState.BlendSourceFactorRGB != r.desiredState.BlendSourceFactorRGB) ||
+		(r.actualState.BlendDestinationFactorRGB != r.desiredState.BlendDestinationFactorRGB) ||
+		(r.actualState.BlendSourceFactorAlpha != r.desiredState.BlendSourceFactorAlpha) ||
+		(r.actualState.BlendDestinationFactorAlpha != r.desiredState.BlendDestinationFactorAlpha)
+
+	if needsUpdate {
+		r.actualState.BlendSourceFactorRGB = r.desiredState.BlendSourceFactorRGB
+		r.actualState.BlendDestinationFactorRGB = r.desiredState.BlendDestinationFactorRGB
+		r.actualState.BlendSourceFactorAlpha = r.desiredState.BlendSourceFactorAlpha
+		r.actualState.BlendDestinationFactorAlpha = r.desiredState.BlendDestinationFactorAlpha
+		wasmgl.BlendFuncSeparate(
+			r.actualState.BlendSourceFactorRGB,
+			r.actualState.BlendDestinationFactorRGB,
+			r.actualState.BlendSourceFactorAlpha,
+			r.actualState.BlendDestinationFactorAlpha,
 		)
 	}
 }
