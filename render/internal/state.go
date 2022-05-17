@@ -20,4 +20,7 @@ type State struct {
 	StencilComparisonFuncBack  int
 	StencilComparisonRefBack   int
 	StencilComparisonMaskBack  int
+	StencilMaskFront           int
+	StencilMaskBack            int
+	ColorMask                  [4]bool
 }
