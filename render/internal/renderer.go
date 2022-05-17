@@ -8,16 +8,35 @@ import (
 )
 
 func NewRenderer() *Renderer {
-	return &Renderer{
-		framebuffer: DefaultFramebuffer,
+	result := &Renderer{
+		framebuffer:   DefaultFramebuffer,
+		isDirty:       true,
+		isInvalidated: true,
+		desiredState: &State{
+			CullTest:        false,
+			CullFace:        wasmgl.BACK,
+			FrontFace:       wasmgl.CCW,
+			DepthTest:       false,
+			DepthMask:       true,
+			DepthComparison: wasmgl.LESS,
+			StencilTest:     false,
+		},
+		actualState: &State{},
 	}
+	result.Invalidate()
+	return result
 }
 
 type Renderer struct {
 	framebuffer           *Framebuffer
 	invalidateAttachments []int
-	primitive             int
+	topology              int
 	indexType             int
+
+	isDirty       bool
+	isInvalidated bool
+	desiredState  *State
+	actualState   *State
 }
 
 func (r *Renderer) BeginRenderPass(info render.RenderPassInfo) {
@@ -32,23 +51,40 @@ func (r *Renderer) BeginRenderPass(info render.RenderPassInfo) {
 		info.Viewport.Height,
 	)
 
+	var colorMaskChanged bool
 	for i, attachment := range info.Colors {
 		if r.framebuffer.activeDrawBuffers[i] && (attachment.LoadOp == render.LoadOperationClear) {
+			if !colorMaskChanged {
+				wasmgl.ColorMask(true, true, true, true)
+			}
 			wasmgl.ClearBufferfv(wasmgl.COLOR, i, attachment.ClearValue[:])
 		}
 	}
+	if colorMaskChanged {
+		r.isDirty = true
+		// TODO: Set actual state
+	}
+
+	oldDepthMaskState := r.actualState.DepthMask
 
 	clearDepth := info.DepthLoadOp == render.LoadOperationClear
 	clearStencil := info.StencilLoadOp == render.LoadOperationClear
 
 	if clearDepth && clearStencil {
+		r.executeCommandDepthWrite(CommandDepthWrite{
+			Enabled: true,
+		})
+		r.validateDepthMask(false)
+		wasmgl.StencilMaskSeparate(wasmgl.FRONT_AND_BACK, 0xFF)
 		depthValue := info.DepthClearValue
 		stencilValue := int32(info.StencilClearValue)
-		wasmgl.ColorMask(true, true, true, true)
 		wasmgl.ClearBufferfi(wasmgl.DEPTH_STENCIL, 0, depthValue, stencilValue)
 	} else {
 		if clearDepth {
-			wasmgl.DepthMask(true)
+			r.executeCommandDepthWrite(CommandDepthWrite{
+				Enabled: true,
+			})
+			r.validateDepthMask(false)
 			depthValues := [1]float32{info.DepthClearValue}
 			wasmgl.ClearBufferfv(wasmgl.DEPTH, 0, depthValues[:])
 		}
@@ -94,6 +130,10 @@ func (r *Renderer) BeginRenderPass(info render.RenderPassInfo) {
 			}
 		}
 	}
+
+	r.executeCommandDepthWrite(CommandDepthWrite{
+		Enabled: oldDepthMaskState,
+	})
 }
 
 func (r *Renderer) EndRenderPass() {
@@ -101,6 +141,11 @@ func (r *Renderer) EndRenderPass() {
 		wasmgl.InvalidateFramebuffer(wasmgl.FRAMEBUFFER, r.invalidateAttachments)
 	}
 	r.framebuffer = DefaultFramebuffer
+}
+
+func (r *Renderer) Invalidate() {
+	r.isDirty = true
+	r.isInvalidated = true
 }
 
 func (r *Renderer) BindPipeline(pipeline render.Pipeline) {
@@ -306,44 +351,40 @@ func (r *Renderer) executeCommandBindPipeline(command CommandBindPipeline) {
 }
 
 func (r *Renderer) executeCommandTopology(command CommandTopology) {
-	r.primitive = int(command.Topology)
+	r.topology = int(command.Topology)
 }
 
 func (r *Renderer) executeCommandCullTest(command CommandCullTest) {
+	r.desiredState.CullTest = command.Enabled
 	if command.Enabled {
-		wasmgl.Enable(wasmgl.CULL_FACE)
-		wasmgl.CullFace(int(command.Face))
-	} else {
-		wasmgl.Disable(wasmgl.CULL_FACE)
+		r.desiredState.CullFace = int(command.Face)
 	}
+	r.isDirty = true
 }
 
 func (r *Renderer) executeCommandFrontFace(command CommandFrontFace) {
-	wasmgl.FrontFace(int(command.Orientation))
+	r.desiredState.FrontFace = int(command.Orientation)
+	r.isDirty = true
 }
 
 func (r *Renderer) executeCommandDepthTest(command CommandDepthTest) {
-	if command.Enabled {
-		wasmgl.Enable(wasmgl.DEPTH_TEST)
-	} else {
-		wasmgl.Disable(wasmgl.DEPTH_TEST)
-	}
+	r.desiredState.DepthTest = command.Enabled
+	r.isDirty = true
 }
 
 func (r *Renderer) executeCommandDepthWrite(command CommandDepthWrite) {
-	wasmgl.DepthMask(command.Enabled)
+	r.desiredState.DepthMask = command.Enabled
+	r.isDirty = true
 }
 
 func (r *Renderer) executeCommandDepthComparison(command CommandDepthComparison) {
-	wasmgl.DepthFunc(int(command.Mode))
+	r.desiredState.DepthComparison = int(command.Mode)
+	r.isDirty = true
 }
 
 func (r *Renderer) executeCommandStencilTest(command CommandStencilTest) {
-	if command.Enabled {
-		wasmgl.Enable(wasmgl.STENCIL_TEST)
-	} else {
-		wasmgl.Disable(wasmgl.STENCIL_TEST)
-	}
+	r.desiredState.StencilTest = command.Enabled
+	r.isDirty = true
 }
 
 func (r *Renderer) executeCommandStencilOperation(command CommandStencilOperation) {
@@ -459,8 +500,9 @@ func (r *Renderer) executeCommandTextureUnit(command CommandTextureUnit) {
 }
 
 func (r *Renderer) executeCommandDraw(command CommandDraw) {
+	r.validateState()
 	wasmgl.DrawArraysInstanced(
-		r.primitive,
+		r.topology,
 		int(command.VertexOffset),
 		int(command.VertexCount),
 		int(command.InstanceCount),
@@ -468,8 +510,9 @@ func (r *Renderer) executeCommandDraw(command CommandDraw) {
 }
 
 func (r *Renderer) executeCommandDrawIndexed(command CommandDrawIndexed) {
+	r.validateState()
 	wasmgl.DrawElementsInstanced(
-		r.primitive,
+		r.topology,
 		int(command.IndexCount),
 		r.indexType,
 		int(command.IndexOffset),
@@ -496,4 +539,101 @@ func (r *Renderer) executeCommandCopyContentToBuffer(command CommandCopyContentT
 		buffer.kind,
 		wasmgl.NilBuffer,
 	)
+}
+
+func (r *Renderer) validateState() {
+	if r.isDirty || r.isInvalidated {
+		forcedUpdate := r.isInvalidated
+		r.validateCullTest(forcedUpdate)
+		r.validateCullFace(forcedUpdate)
+		r.validateFrontFace(forcedUpdate)
+		r.validateDepthTest(forcedUpdate)
+		r.validateDepthMask(forcedUpdate)
+		r.validateDepthComparison(forcedUpdate)
+		r.validateStencilTest(forcedUpdate)
+	}
+	r.isDirty = false
+	r.isInvalidated = false
+}
+
+func (r *Renderer) validateCullTest(forcedUpdate bool) {
+	needsUpdate := forcedUpdate ||
+		(r.actualState.CullTest != r.desiredState.CullTest)
+
+	if needsUpdate {
+		r.actualState.CullTest = r.desiredState.CullTest
+		if r.actualState.CullTest {
+			wasmgl.Enable(wasmgl.CULL_FACE)
+		} else {
+			wasmgl.Disable(wasmgl.CULL_FACE)
+		}
+	}
+}
+
+func (r *Renderer) validateCullFace(forcedUpdate bool) {
+	needsUpdate := forcedUpdate ||
+		(r.actualState.CullFace != r.desiredState.CullFace)
+
+	if needsUpdate {
+		r.actualState.CullFace = r.desiredState.CullFace
+		wasmgl.CullFace(r.actualState.CullFace)
+	}
+}
+
+func (r *Renderer) validateFrontFace(forcedUpdate bool) {
+	needsUpdate := forcedUpdate ||
+		(r.actualState.FrontFace != r.desiredState.FrontFace)
+
+	if needsUpdate {
+		r.actualState.FrontFace = r.desiredState.FrontFace
+		wasmgl.FrontFace(r.actualState.FrontFace)
+	}
+}
+
+func (r *Renderer) validateDepthTest(forcedUpdate bool) {
+	needsUpdate := forcedUpdate ||
+		(r.actualState.DepthTest != r.desiredState.DepthTest)
+
+	if needsUpdate {
+		r.actualState.DepthTest = r.desiredState.DepthTest
+		if r.actualState.DepthTest {
+			wasmgl.Enable(wasmgl.DEPTH_TEST)
+		} else {
+			wasmgl.Disable(wasmgl.DEPTH_TEST)
+		}
+	}
+}
+
+func (r *Renderer) validateDepthMask(forcedUpdate bool) {
+	needsUpdate := forcedUpdate ||
+		(r.actualState.DepthMask != r.desiredState.DepthMask)
+
+	if needsUpdate {
+		r.actualState.DepthMask = r.desiredState.DepthMask
+		wasmgl.DepthMask(r.actualState.DepthMask)
+	}
+}
+
+func (r *Renderer) validateDepthComparison(forcedUpdate bool) {
+	needsUpdate := forcedUpdate ||
+		(r.actualState.DepthComparison != r.desiredState.DepthComparison)
+
+	if needsUpdate {
+		r.actualState.DepthComparison = r.desiredState.DepthComparison
+		wasmgl.DepthFunc(r.actualState.DepthComparison)
+	}
+}
+
+func (r *Renderer) validateStencilTest(forcedUpdate bool) {
+	needsUpdate := forcedUpdate ||
+		(r.actualState.StencilTest != r.desiredState.StencilTest)
+
+	if needsUpdate {
+		r.actualState.StencilTest = r.desiredState.StencilTest
+		if r.actualState.StencilTest {
+			wasmgl.Enable(wasmgl.STENCIL_TEST)
+		} else {
+			wasmgl.Disable(wasmgl.STENCIL_TEST)
+		}
+	}
 }
