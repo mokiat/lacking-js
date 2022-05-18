@@ -150,6 +150,9 @@ func (q *CommandQueue) CopyContentToBuffer(info render.CopyContentToBufferInfo) 
 	case render.DataFormatRGBA8:
 		format = wasmgl.RGBA
 		xtype = wasmgl.UNSIGNED_BYTE
+	case render.DataFormatRGBA16F:
+		format = wasmgl.RGBA
+		xtype = wasmgl.HALF_FLOAT
 	case render.DataFormatRGBA32F:
 		format = wasmgl.RGBA
 		xtype = wasmgl.FLOAT
