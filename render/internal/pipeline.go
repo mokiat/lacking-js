@@ -57,8 +57,6 @@ func NewPipeline(info render.PipelineInfo) *Pipeline {
 		pipeline.FrontFace.Orientation = wasmgl.CW
 	}
 
-	pipeline.LineWidth.Width = info.LineWidth
-
 	pipeline.DepthTest.Enabled = info.DepthTest
 	pipeline.DepthWrite.Enabled = info.DepthWrite
 	pipeline.DepthComparison.Mode = glEnumFromComparison(info.DepthComparison)
@@ -113,7 +111,6 @@ type Pipeline struct {
 	Topology         CommandTopology
 	CullTest         CommandCullTest
 	FrontFace        CommandFrontFace
-	LineWidth        CommandLineWidth
 	DepthTest        CommandDepthTest
 	DepthWrite       CommandDepthWrite
 	DepthComparison  CommandDepthComparison

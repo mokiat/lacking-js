@@ -93,6 +93,10 @@ func (a *API) EndRenderPass() {
 	a.renderer.EndRenderPass()
 }
 
+func (a *API) Invalidate() {
+	a.renderer.Invalidate()
+}
+
 func (a *API) BindPipeline(pipeline render.Pipeline) {
 	a.renderer.BindPipeline(pipeline)
 }

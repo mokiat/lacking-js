@@ -8,19 +8,62 @@ import (
 )
 
 func NewRenderer() *Renderer {
-	return &Renderer{
-		framebuffer: DefaultFramebuffer,
+	result := &Renderer{
+		framebuffer:   DefaultFramebuffer,
+		isDirty:       true,
+		isInvalidated: true,
+		desiredState: &State{
+			CullTest:                    false,
+			CullFace:                    wasmgl.BACK,
+			FrontFace:                   wasmgl.CCW,
+			DepthTest:                   false,
+			DepthMask:                   true,
+			DepthComparison:             wasmgl.LESS,
+			StencilTest:                 false,
+			StencilOpStencilFailFront:   wasmgl.KEEP,
+			StencilOpDepthFailFront:     wasmgl.KEEP,
+			StencilOpPassFront:          wasmgl.KEEP,
+			StencilOpStencilFailBack:    wasmgl.KEEP,
+			StencilOpDepthFailBack:      wasmgl.KEEP,
+			StencilOpPassBack:           wasmgl.KEEP,
+			StencilComparisonFuncFront:  wasmgl.ALWAYS,
+			StencilComparisonRefFront:   0x00,
+			StencilComparisonMaskFront:  0xFF,
+			StencilComparisonFuncBack:   wasmgl.ALWAYS,
+			StencilComparisonRefBack:    0x00,
+			StencilComparisonMaskBack:   0xFF,
+			StencilMaskFront:            0xFF,
+			StencilMaskBack:             0xFF,
+			ColorMask:                   render.ColorMaskTrue,
+			Blending:                    false,
+			BlendModeRGB:                wasmgl.FUNC_ADD,
+			BlendModeAlpha:              wasmgl.FUNC_ADD,
+			BlendSourceFactorRGB:        wasmgl.ONE,
+			BlendDestinationFactorRGB:   wasmgl.ZERO,
+			BlendSourceFactorAlpha:      wasmgl.ONE,
+			BlendDestinationFactorAlpha: wasmgl.ZERO,
+		},
+		actualState: &State{},
 	}
+	result.Invalidate()
+	return result
 }
 
 type Renderer struct {
 	framebuffer           *Framebuffer
 	invalidateAttachments []int
-	primitive             int
+	topology              int
 	indexType             int
+
+	isDirty       bool
+	isInvalidated bool
+	desiredState  *State
+	actualState   *State
 }
 
 func (r *Renderer) BeginRenderPass(info render.RenderPassInfo) {
+	r.validateState()
+
 	r.framebuffer = info.Framebuffer.(*Framebuffer)
 	isDefaultFramebuffer := r.framebuffer == DefaultFramebuffer
 
@@ -32,37 +75,68 @@ func (r *Renderer) BeginRenderPass(info render.RenderPassInfo) {
 		info.Viewport.Height,
 	)
 
+	oldColorMask := r.actualState.ColorMask
+
+	var colorMaskChanged bool
 	for i, attachment := range info.Colors {
 		if r.framebuffer.activeDrawBuffers[i] && (attachment.LoadOp == render.LoadOperationClear) {
+			if !colorMaskChanged {
+				r.executeCommandColorWrite(CommandColorWrite{
+					Mask: render.ColorMaskTrue,
+				})
+				r.validateColorMask(false)
+				colorMaskChanged = true
+			}
 			wasmgl.ClearBufferfv(wasmgl.COLOR, i, attachment.ClearValue[:])
 		}
 	}
+	if colorMaskChanged {
+		r.executeCommandColorWrite(CommandColorWrite{
+			Mask: oldColorMask,
+		})
+	}
+
+	oldDepthMask := r.actualState.DepthMask
+	oldStencilMaskFront := r.actualState.StencilMaskFront
+	oldStencilMaskBack := r.actualState.StencilMaskBack
 
 	clearDepth := info.DepthLoadOp == render.LoadOperationClear
 	clearStencil := info.StencilLoadOp == render.LoadOperationClear
 
 	if clearDepth && clearStencil {
+		r.executeCommandDepthWrite(CommandDepthWrite{
+			Enabled: true,
+		})
+		r.validateDepthMask(false)
+		r.executeCommandStencilMask(CommandStencilMask{
+			Face: wasmgl.FRONT_AND_BACK,
+			Mask: 0xFF,
+		})
+		r.validateStencilMask(false)
 		depthValue := info.DepthClearValue
 		stencilValue := int32(info.StencilClearValue)
-		wasmgl.ColorMask(true, true, true, true)
 		wasmgl.ClearBufferfi(wasmgl.DEPTH_STENCIL, 0, depthValue, stencilValue)
 	} else {
 		if clearDepth {
-			wasmgl.DepthMask(true)
+			r.executeCommandDepthWrite(CommandDepthWrite{
+				Enabled: true,
+			})
+			r.validateDepthMask(false)
 			depthValues := [1]float32{info.DepthClearValue}
 			wasmgl.ClearBufferfv(wasmgl.DEPTH, 0, depthValues[:])
 		}
 		if clearStencil {
-			wasmgl.StencilMaskSeparate(wasmgl.FRONT_AND_BACK, 0xFF)
+			r.executeCommandStencilMask(CommandStencilMask{
+				Face: wasmgl.FRONT_AND_BACK,
+				Mask: 0xFF,
+			})
+			r.validateStencilMask(false)
 			stencilValues := [1]int32{int32(info.StencilClearValue)}
 			wasmgl.ClearBufferiv(wasmgl.STENCIL, 0, stencilValues[:])
 		}
 	}
 
 	r.invalidateAttachments = r.invalidateAttachments[:0]
-
-	invalidateDepth := info.DepthStoreOp == render.StoreOperationDontCare
-	invalidateStencil := info.StencilStoreOp == render.StoreOperationDontCare
 
 	for i, attachment := range info.Colors {
 		if r.framebuffer.activeDrawBuffers[i] && (attachment.StoreOp == render.StoreOperationDontCare) {
@@ -75,6 +149,9 @@ func (r *Renderer) BeginRenderPass(info render.RenderPassInfo) {
 			}
 		}
 	}
+
+	invalidateDepth := info.DepthStoreOp == render.StoreOperationDontCare
+	invalidateStencil := info.StencilStoreOp == render.StoreOperationDontCare
 
 	if invalidateDepth && invalidateStencil && !isDefaultFramebuffer {
 		r.invalidateAttachments = append(r.invalidateAttachments, wasmgl.DEPTH_STENCIL_ATTACHMENT)
@@ -94,6 +171,18 @@ func (r *Renderer) BeginRenderPass(info render.RenderPassInfo) {
 			}
 		}
 	}
+
+	r.executeCommandDepthWrite(CommandDepthWrite{
+		Enabled: oldDepthMask,
+	})
+	r.executeCommandStencilMask(CommandStencilMask{
+		Face: wasmgl.FRONT,
+		Mask: uint32(oldStencilMaskFront),
+	})
+	r.executeCommandStencilMask(CommandStencilMask{
+		Face: wasmgl.BACK,
+		Mask: uint32(oldStencilMaskBack),
+	})
 }
 
 func (r *Renderer) EndRenderPass() {
@@ -103,6 +192,11 @@ func (r *Renderer) EndRenderPass() {
 	r.framebuffer = DefaultFramebuffer
 }
 
+func (r *Renderer) Invalidate() {
+	r.isDirty = true
+	r.isInvalidated = true
+}
+
 func (r *Renderer) BindPipeline(pipeline render.Pipeline) {
 	intPipeline := pipeline.(*Pipeline)
 	r.executeCommandBindPipeline(CommandBindPipeline{
@@ -110,7 +204,6 @@ func (r *Renderer) BindPipeline(pipeline render.Pipeline) {
 		Topology:         intPipeline.Topology,
 		CullTest:         intPipeline.CullTest,
 		FrontFace:        intPipeline.FrontFace,
-		LineWidth:        intPipeline.LineWidth,
 		DepthTest:        intPipeline.DepthTest,
 		DepthWrite:       intPipeline.DepthWrite,
 		DepthComparison:  intPipeline.DepthComparison,
@@ -227,9 +320,6 @@ func (r *Renderer) SubmitQueue(queue *CommandQueue) {
 		case CommandKindFrontFace:
 			command := PopCommand[CommandFrontFace](queue)
 			r.executeCommandFrontFace(command)
-		case CommandKindLineWidth:
-			command := PopCommand[CommandLineWidth](queue)
-			r.executeCommandLineWidth(command)
 		case CommandKindDepthTest:
 			command := PopCommand[CommandDepthTest](queue)
 			r.executeCommandDepthTest(command)
@@ -279,8 +369,6 @@ func (r *Renderer) executeCommandBindPipeline(command CommandBindPipeline) {
 	r.executeCommandTopology(command.Topology)
 	r.executeCommandCullTest(command.CullTest)
 	r.executeCommandFrontFace(command.FrontFace)
-	// TODO: Only if line-type topology
-	r.executeCommandLineWidth(command.LineWidth)
 	r.executeCommandDepthTest(command.DepthTest)
 	r.executeCommandDepthWrite(command.DepthWrite)
 	if command.DepthTest.Enabled {
@@ -288,128 +376,121 @@ func (r *Renderer) executeCommandBindPipeline(command CommandBindPipeline) {
 	}
 	r.executeCommandStencilTest(command.StencilTest)
 	if command.StencilTest.Enabled {
-		// TODO: Optimize if equal except for face
-		r.executeCommandStencilFunc(command.StencilFuncFront)
-		r.executeCommandStencilFunc(command.StencilFuncBack)
-		// TODO: Optimize if equal except for face
 		r.executeCommandStencilOperation(command.StencilOpFront)
 		r.executeCommandStencilOperation(command.StencilOpBack)
-		// TODO: Optimize if equal except for face
+		r.executeCommandStencilFunc(command.StencilFuncFront)
+		r.executeCommandStencilFunc(command.StencilFuncBack)
 		r.executeCommandStencilMask(command.StencilMaskFront)
 		r.executeCommandStencilMask(command.StencilMaskBack)
 	}
 	r.executeCommandColorWrite(command.ColorWrite)
-	// TODO: Only if non-zero mask
+	r.desiredState.Blending = command.BlendEnabled
+	r.isDirty = true
 	if command.BlendEnabled {
-		wasmgl.Enable(wasmgl.BLEND)
+		r.executeCommandBlendColor(command.BlendColor)
 		r.executeCommandBlendEquation(command.BlendEquation)
 		r.executeCommandBlendFunc(command.BlendFunc)
-		r.executeCommandBlendColor(command.BlendColor)
-	} else {
-		wasmgl.Disable(wasmgl.BLEND)
 	}
 	r.executeCommandBindVertexArray(command.VertexArray)
 }
 
 func (r *Renderer) executeCommandTopology(command CommandTopology) {
-	r.primitive = int(command.Topology)
+	r.topology = int(command.Topology)
 }
 
 func (r *Renderer) executeCommandCullTest(command CommandCullTest) {
+	r.desiredState.CullTest = command.Enabled
 	if command.Enabled {
-		wasmgl.Enable(wasmgl.CULL_FACE)
-		wasmgl.CullFace(int(command.Face))
-	} else {
-		wasmgl.Disable(wasmgl.CULL_FACE)
+		r.desiredState.CullFace = int(command.Face)
 	}
+	r.isDirty = true
 }
 
 func (r *Renderer) executeCommandFrontFace(command CommandFrontFace) {
-	wasmgl.FrontFace(int(command.Orientation))
-}
-
-func (r *Renderer) executeCommandLineWidth(command CommandLineWidth) {
-	if command.Width > 0.0 {
-		wasmgl.LineWidth(command.Width)
-	}
+	r.desiredState.FrontFace = int(command.Orientation)
+	r.isDirty = true
 }
 
 func (r *Renderer) executeCommandDepthTest(command CommandDepthTest) {
-	if command.Enabled {
-		wasmgl.Enable(wasmgl.DEPTH_TEST)
-	} else {
-		wasmgl.Disable(wasmgl.DEPTH_TEST)
-	}
+	r.desiredState.DepthTest = command.Enabled
+	r.isDirty = true
 }
 
 func (r *Renderer) executeCommandDepthWrite(command CommandDepthWrite) {
-	wasmgl.DepthMask(command.Enabled)
+	r.desiredState.DepthMask = command.Enabled
+	r.isDirty = true
 }
 
 func (r *Renderer) executeCommandDepthComparison(command CommandDepthComparison) {
-	wasmgl.DepthFunc(int(command.Mode))
+	r.desiredState.DepthComparison = int(command.Mode)
+	r.isDirty = true
 }
 
 func (r *Renderer) executeCommandStencilTest(command CommandStencilTest) {
-	if command.Enabled {
-		wasmgl.Enable(wasmgl.STENCIL_TEST)
-	} else {
-		wasmgl.Disable(wasmgl.STENCIL_TEST)
-	}
+	r.desiredState.StencilTest = command.Enabled
+	r.isDirty = true
 }
 
 func (r *Renderer) executeCommandStencilOperation(command CommandStencilOperation) {
-	wasmgl.StencilOpSeparate(
-		int(command.Face),
-		int(command.StencilFail),
-		int(command.DepthFail),
-		int(command.Pass),
-	)
+	if int(command.Face) == wasmgl.FRONT || int(command.Face) == wasmgl.FRONT_AND_BACK {
+		r.desiredState.StencilOpStencilFailFront = int(command.StencilFail)
+		r.desiredState.StencilOpDepthFailFront = int(command.DepthFail)
+		r.desiredState.StencilOpPassFront = int(command.Pass)
+	}
+	if int(command.Face) == wasmgl.BACK || int(command.Face) == wasmgl.FRONT_AND_BACK {
+		r.desiredState.StencilOpStencilFailBack = int(command.StencilFail)
+		r.desiredState.StencilOpDepthFailBack = int(command.DepthFail)
+		r.desiredState.StencilOpPassBack = int(command.Pass)
+	}
+	r.isDirty = true
 }
 
 func (r *Renderer) executeCommandStencilFunc(command CommandStencilFunc) {
-	wasmgl.StencilFuncSeparate(
-		int(command.Face),
-		int(command.Func),
-		int(command.Ref),
-		int(command.Mask),
-	)
+	if int(command.Face) == wasmgl.FRONT || int(command.Face) == wasmgl.FRONT_AND_BACK {
+		r.desiredState.StencilComparisonFuncFront = int(command.Func)
+		r.desiredState.StencilComparisonRefFront = int(command.Ref)
+		r.desiredState.StencilComparisonMaskFront = int(command.Mask)
+	}
+	if int(command.Face) == wasmgl.BACK || int(command.Face) == wasmgl.FRONT_AND_BACK {
+		r.desiredState.StencilComparisonFuncBack = int(command.Func)
+		r.desiredState.StencilComparisonRefBack = int(command.Ref)
+		r.desiredState.StencilComparisonMaskBack = int(command.Mask)
+	}
+	r.isDirty = true
 }
 
 func (r *Renderer) executeCommandStencilMask(command CommandStencilMask) {
-	wasmgl.StencilMaskSeparate(
-		int(command.Face),
-		int(command.Mask),
-	)
+	if int(command.Face) == wasmgl.FRONT || int(command.Face) == wasmgl.FRONT_AND_BACK {
+		r.desiredState.StencilMaskFront = int(command.Mask)
+	}
+	if int(command.Face) == wasmgl.BACK || int(command.Face) == wasmgl.FRONT_AND_BACK {
+		r.desiredState.StencilMaskBack = int(command.Mask)
+	}
+	r.isDirty = true
 }
 
 func (r *Renderer) executeCommandColorWrite(command CommandColorWrite) {
-	wasmgl.ColorMask(command.Mask[0], command.Mask[1], command.Mask[2], command.Mask[3])
+	r.desiredState.ColorMask = command.Mask
+	r.isDirty = true
 }
 
 func (r *Renderer) executeCommandBlendColor(command CommandBlendColor) {
-	wasmgl.BlendColor(
-		command.Color[0],
-		command.Color[1],
-		command.Color[2],
-		command.Color[3],
-	)
+	r.desiredState.BlendColor = command.Color
+	r.isDirty = true
 }
 
 func (r *Renderer) executeCommandBlendEquation(command CommandBlendEquation) {
-	wasmgl.BlendEquationSeparate(
-		int(command.ModeRGB),
-		int(command.ModeAlpha),
-	)
+	r.desiredState.BlendModeRGB = int(command.ModeRGB)
+	r.desiredState.BlendModeAlpha = int(command.ModeAlpha)
+	r.isDirty = true
 }
 
 func (r *Renderer) executeCommandBlendFunc(command CommandBlendFunc) {
-	wasmgl.BlendFuncSeparate(
-		int(command.SourceFactorRGB),
-		int(command.DestinationFactorRGB),
-		int(command.SourceFactorAlpha),
-		int(command.DestinationFactorAlpha),
-	)
+	r.desiredState.BlendSourceFactorRGB = int(command.SourceFactorRGB)
+	r.desiredState.BlendDestinationFactorRGB = int(command.DestinationFactorRGB)
+	r.desiredState.BlendSourceFactorAlpha = int(command.SourceFactorAlpha)
+	r.desiredState.BlendDestinationFactorAlpha = int(command.DestinationFactorAlpha)
+	r.isDirty = true
 }
 
 func (r *Renderer) executeCommandBindVertexArray(command CommandBindVertexArray) {
@@ -471,8 +552,9 @@ func (r *Renderer) executeCommandTextureUnit(command CommandTextureUnit) {
 }
 
 func (r *Renderer) executeCommandDraw(command CommandDraw) {
+	r.validateState()
 	wasmgl.DrawArraysInstanced(
-		r.primitive,
+		r.topology,
 		int(command.VertexOffset),
 		int(command.VertexCount),
 		int(command.InstanceCount),
@@ -480,8 +562,9 @@ func (r *Renderer) executeCommandDraw(command CommandDraw) {
 }
 
 func (r *Renderer) executeCommandDrawIndexed(command CommandDrawIndexed) {
+	r.validateState()
 	wasmgl.DrawElementsInstanced(
-		r.primitive,
+		r.topology,
 		int(command.IndexCount),
 		r.indexType,
 		int(command.IndexOffset),
@@ -508,4 +591,333 @@ func (r *Renderer) executeCommandCopyContentToBuffer(command CommandCopyContentT
 		buffer.kind,
 		wasmgl.NilBuffer,
 	)
+}
+
+func (r *Renderer) validateState() {
+	if r.isDirty || r.isInvalidated {
+		forcedUpdate := r.isInvalidated
+		r.validateCullTest(forcedUpdate)
+		r.validateCullFace(forcedUpdate)
+		r.validateFrontFace(forcedUpdate)
+		r.validateDepthTest(forcedUpdate)
+		r.validateDepthMask(forcedUpdate)
+		r.validateDepthComparison(forcedUpdate)
+		r.validateStencilTest(forcedUpdate)
+		r.validateStencilOperation(forcedUpdate)
+		r.validateStencilComparison(forcedUpdate)
+		r.validateStencilMask(forcedUpdate)
+		r.validateColorMask(forcedUpdate)
+		r.validateBlending(forcedUpdate)
+		r.validateBlendEquation(forcedUpdate)
+		r.validateBlendFunc(forcedUpdate)
+	}
+	r.isDirty = false
+	r.isInvalidated = false
+}
+
+func (r *Renderer) validateCullTest(forcedUpdate bool) {
+	needsUpdate := forcedUpdate ||
+		(r.actualState.CullTest != r.desiredState.CullTest)
+
+	if needsUpdate {
+		r.actualState.CullTest = r.desiredState.CullTest
+		if r.actualState.CullTest {
+			wasmgl.Enable(wasmgl.CULL_FACE)
+		} else {
+			wasmgl.Disable(wasmgl.CULL_FACE)
+		}
+	}
+}
+
+func (r *Renderer) validateCullFace(forcedUpdate bool) {
+	needsUpdate := forcedUpdate ||
+		(r.actualState.CullFace != r.desiredState.CullFace)
+
+	if needsUpdate {
+		r.actualState.CullFace = r.desiredState.CullFace
+		wasmgl.CullFace(r.actualState.CullFace)
+	}
+}
+
+func (r *Renderer) validateFrontFace(forcedUpdate bool) {
+	needsUpdate := forcedUpdate ||
+		(r.actualState.FrontFace != r.desiredState.FrontFace)
+
+	if needsUpdate {
+		r.actualState.FrontFace = r.desiredState.FrontFace
+		wasmgl.FrontFace(r.actualState.FrontFace)
+	}
+}
+
+func (r *Renderer) validateDepthTest(forcedUpdate bool) {
+	needsUpdate := forcedUpdate ||
+		(r.actualState.DepthTest != r.desiredState.DepthTest)
+
+	if needsUpdate {
+		r.actualState.DepthTest = r.desiredState.DepthTest
+		if r.actualState.DepthTest {
+			wasmgl.Enable(wasmgl.DEPTH_TEST)
+		} else {
+			wasmgl.Disable(wasmgl.DEPTH_TEST)
+		}
+	}
+}
+
+func (r *Renderer) validateDepthMask(forcedUpdate bool) {
+	needsUpdate := forcedUpdate ||
+		(r.actualState.DepthMask != r.desiredState.DepthMask)
+
+	if needsUpdate {
+		r.actualState.DepthMask = r.desiredState.DepthMask
+		wasmgl.DepthMask(r.actualState.DepthMask)
+	}
+}
+
+func (r *Renderer) validateDepthComparison(forcedUpdate bool) {
+	needsUpdate := forcedUpdate ||
+		(r.actualState.DepthComparison != r.desiredState.DepthComparison)
+
+	if needsUpdate {
+		r.actualState.DepthComparison = r.desiredState.DepthComparison
+		wasmgl.DepthFunc(r.actualState.DepthComparison)
+	}
+}
+
+func (r *Renderer) validateStencilTest(forcedUpdate bool) {
+	needsUpdate := forcedUpdate ||
+		(r.actualState.StencilTest != r.desiredState.StencilTest)
+
+	if needsUpdate {
+		r.actualState.StencilTest = r.desiredState.StencilTest
+		if r.actualState.StencilTest {
+			wasmgl.Enable(wasmgl.STENCIL_TEST)
+		} else {
+			wasmgl.Disable(wasmgl.STENCIL_TEST)
+		}
+	}
+}
+
+func (r *Renderer) validateStencilOperation(forcedUpdate bool) {
+	frontNeedsUpdate := forcedUpdate ||
+		(r.actualState.StencilOpStencilFailFront != r.desiredState.StencilOpStencilFailFront) ||
+		(r.actualState.StencilOpDepthFailFront != r.desiredState.StencilOpDepthFailFront) ||
+		(r.actualState.StencilOpPassFront != r.desiredState.StencilOpPassFront)
+
+	backNeedsUpdate := forcedUpdate ||
+		(r.actualState.StencilOpStencilFailBack != r.desiredState.StencilOpStencilFailBack) ||
+		(r.actualState.StencilOpDepthFailBack != r.desiredState.StencilOpDepthFailBack) ||
+		(r.actualState.StencilOpPassBack != r.desiredState.StencilOpPassBack)
+
+	if frontNeedsUpdate {
+		r.actualState.StencilOpStencilFailFront = r.desiredState.StencilOpStencilFailFront
+		r.actualState.StencilOpDepthFailFront = r.desiredState.StencilOpDepthFailFront
+		r.actualState.StencilOpPassFront = r.desiredState.StencilOpPassFront
+	}
+
+	if backNeedsUpdate {
+		r.actualState.StencilOpStencilFailBack = r.desiredState.StencilOpStencilFailBack
+		r.actualState.StencilOpDepthFailBack = r.desiredState.StencilOpDepthFailBack
+		r.actualState.StencilOpPassBack = r.desiredState.StencilOpPassBack
+	}
+
+	frontEqualsBack := (r.desiredState.StencilOpStencilFailFront == r.desiredState.StencilOpStencilFailBack) &&
+		(r.desiredState.StencilOpDepthFailFront == r.desiredState.StencilOpDepthFailBack) &&
+		(r.desiredState.StencilOpPassFront == r.desiredState.StencilOpPassBack)
+
+	if frontNeedsUpdate && backNeedsUpdate && frontEqualsBack {
+		wasmgl.StencilOpSeparate(
+			wasmgl.FRONT_AND_BACK,
+			r.actualState.StencilOpStencilFailFront,
+			r.actualState.StencilOpDepthFailFront,
+			r.actualState.StencilOpPassFront,
+		)
+	} else {
+		if frontNeedsUpdate {
+			wasmgl.StencilOpSeparate(
+				wasmgl.FRONT,
+				r.actualState.StencilOpStencilFailFront,
+				r.actualState.StencilOpDepthFailFront,
+				r.actualState.StencilOpPassFront,
+			)
+		}
+		if backNeedsUpdate {
+			wasmgl.StencilOpSeparate(
+				wasmgl.BACK,
+				r.actualState.StencilOpStencilFailBack,
+				r.actualState.StencilOpDepthFailBack,
+				r.actualState.StencilOpPassBack,
+			)
+		}
+	}
+}
+
+func (r *Renderer) validateStencilComparison(forcedUpdate bool) {
+	frontNeedsUpdate := forcedUpdate ||
+		(r.actualState.StencilComparisonFuncFront != r.desiredState.StencilComparisonFuncFront) ||
+		(r.actualState.StencilComparisonRefFront != r.desiredState.StencilComparisonRefFront) ||
+		(r.actualState.StencilComparisonMaskFront != r.desiredState.StencilComparisonMaskFront)
+
+	backNeedsUpdate := forcedUpdate ||
+		(r.actualState.StencilComparisonFuncBack != r.desiredState.StencilComparisonFuncBack) ||
+		(r.actualState.StencilComparisonRefBack != r.desiredState.StencilComparisonRefBack) ||
+		(r.actualState.StencilComparisonMaskBack != r.desiredState.StencilComparisonMaskBack)
+
+	if frontNeedsUpdate {
+		r.actualState.StencilComparisonFuncFront = r.desiredState.StencilComparisonFuncFront
+		r.actualState.StencilComparisonRefFront = r.desiredState.StencilComparisonRefFront
+		r.actualState.StencilComparisonMaskFront = r.desiredState.StencilComparisonMaskFront
+	}
+
+	if backNeedsUpdate {
+		r.actualState.StencilComparisonFuncBack = r.desiredState.StencilComparisonFuncBack
+		r.actualState.StencilComparisonRefBack = r.desiredState.StencilComparisonRefBack
+		r.actualState.StencilComparisonMaskBack = r.desiredState.StencilComparisonMaskBack
+	}
+
+	frontEqualsBack := (r.desiredState.StencilComparisonFuncFront == r.desiredState.StencilComparisonFuncBack) &&
+		(r.desiredState.StencilComparisonRefFront == r.desiredState.StencilComparisonRefBack) &&
+		(r.desiredState.StencilComparisonMaskFront == r.desiredState.StencilComparisonMaskBack)
+
+	if frontNeedsUpdate && backNeedsUpdate && frontEqualsBack {
+		wasmgl.StencilFuncSeparate(
+			wasmgl.FRONT_AND_BACK,
+			r.actualState.StencilComparisonFuncFront,
+			r.actualState.StencilComparisonRefFront,
+			r.actualState.StencilComparisonMaskFront,
+		)
+	} else {
+		if frontNeedsUpdate {
+			wasmgl.StencilFuncSeparate(
+				wasmgl.FRONT,
+				r.actualState.StencilComparisonFuncFront,
+				r.actualState.StencilComparisonRefFront,
+				r.actualState.StencilComparisonMaskFront,
+			)
+		}
+		if backNeedsUpdate {
+			wasmgl.StencilFuncSeparate(
+				wasmgl.BACK,
+				r.actualState.StencilComparisonFuncBack,
+				r.actualState.StencilComparisonRefBack,
+				r.actualState.StencilComparisonMaskBack,
+			)
+		}
+	}
+}
+
+func (r *Renderer) validateStencilMask(forcedUpdate bool) {
+	frontNeedsUpdate := forcedUpdate ||
+		(r.actualState.StencilMaskFront != r.desiredState.StencilMaskFront)
+
+	backNeedsUpdate := forcedUpdate ||
+		(r.actualState.StencilMaskBack != r.desiredState.StencilMaskBack)
+
+	if frontNeedsUpdate {
+		r.actualState.StencilMaskFront = r.desiredState.StencilMaskFront
+	}
+	if backNeedsUpdate {
+		r.actualState.StencilMaskBack = r.desiredState.StencilMaskBack
+	}
+
+	frontEqualsBack := (r.desiredState.StencilMaskFront == r.desiredState.StencilMaskBack)
+
+	if frontNeedsUpdate && backNeedsUpdate && frontEqualsBack {
+		wasmgl.StencilMaskSeparate(
+			wasmgl.FRONT_AND_BACK,
+			r.actualState.StencilMaskFront,
+		)
+	} else {
+		if frontNeedsUpdate {
+			wasmgl.StencilMaskSeparate(
+				wasmgl.FRONT,
+				r.actualState.StencilMaskFront,
+			)
+		}
+		if backNeedsUpdate {
+			wasmgl.StencilMaskSeparate(
+				wasmgl.BACK,
+				r.actualState.StencilMaskBack,
+			)
+		}
+	}
+}
+
+func (r *Renderer) validateColorMask(forcedUpdate bool) {
+	needsUpdate := forcedUpdate ||
+		(r.actualState.ColorMask != r.desiredState.ColorMask)
+
+	if needsUpdate {
+		r.actualState.ColorMask = r.desiredState.ColorMask
+		wasmgl.ColorMask(
+			r.actualState.ColorMask[0],
+			r.actualState.ColorMask[1],
+			r.actualState.ColorMask[2],
+			r.actualState.ColorMask[3],
+		)
+	}
+}
+
+func (r *Renderer) validateBlending(forcedUpdate bool) {
+	needsUpdate := forcedUpdate ||
+		(r.actualState.Blending != r.desiredState.Blending)
+
+	if needsUpdate {
+		r.actualState.Blending = r.desiredState.Blending
+		if r.actualState.Blending {
+			wasmgl.Enable(wasmgl.BLEND)
+		} else {
+			wasmgl.Disable(wasmgl.BLEND)
+		}
+	}
+}
+
+func (r *Renderer) validateBlendColor(forcedUpdate bool) {
+	needsUpdate := forcedUpdate ||
+		(r.actualState.BlendColor != r.desiredState.BlendColor)
+
+	if needsUpdate {
+		r.actualState.BlendColor = r.desiredState.BlendColor
+		wasmgl.BlendColor(
+			r.actualState.BlendColor[0],
+			r.actualState.BlendColor[1],
+			r.actualState.BlendColor[2],
+			r.actualState.BlendColor[3],
+		)
+	}
+}
+
+func (r *Renderer) validateBlendEquation(forcedUpdate bool) {
+	needsUpdate := forcedUpdate ||
+		(r.actualState.BlendModeRGB != r.desiredState.BlendModeRGB) ||
+		(r.actualState.BlendModeAlpha != r.desiredState.BlendModeAlpha)
+
+	if needsUpdate {
+		r.actualState.BlendModeRGB = r.desiredState.BlendModeRGB
+		r.actualState.BlendModeAlpha = r.desiredState.BlendModeAlpha
+		wasmgl.BlendEquationSeparate(
+			r.actualState.BlendModeRGB,
+			r.actualState.BlendModeAlpha,
+		)
+	}
+}
+
+func (r *Renderer) validateBlendFunc(forcedUpdate bool) {
+	needsUpdate := forcedUpdate ||
+		(r.actualState.BlendSourceFactorRGB != r.desiredState.BlendSourceFactorRGB) ||
+		(r.actualState.BlendDestinationFactorRGB != r.desiredState.BlendDestinationFactorRGB) ||
+		(r.actualState.BlendSourceFactorAlpha != r.desiredState.BlendSourceFactorAlpha) ||
+		(r.actualState.BlendDestinationFactorAlpha != r.desiredState.BlendDestinationFactorAlpha)
+
+	if needsUpdate {
+		r.actualState.BlendSourceFactorRGB = r.desiredState.BlendSourceFactorRGB
+		r.actualState.BlendDestinationFactorRGB = r.desiredState.BlendDestinationFactorRGB
+		r.actualState.BlendSourceFactorAlpha = r.desiredState.BlendSourceFactorAlpha
+		r.actualState.BlendDestinationFactorAlpha = r.desiredState.BlendDestinationFactorAlpha
+		wasmgl.BlendFuncSeparate(
+			r.actualState.BlendSourceFactorRGB,
+			r.actualState.BlendDestinationFactorRGB,
+			r.actualState.BlendSourceFactorAlpha,
+			r.actualState.BlendDestinationFactorAlpha,
+		)
+	}
 }
