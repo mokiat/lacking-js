@@ -85,6 +85,10 @@ func (a *API) CreateCommandQueue() render.CommandQueue {
 	return internal.NewCommandQueue()
 }
 
+func (a *API) DetermineContentFormat(framebuffer render.Framebuffer) render.DataFormat {
+	return internal.DetermineContentFormat(framebuffer)
+}
+
 func (a *API) BeginRenderPass(info render.RenderPassInfo) {
 	a.renderer.BeginRenderPass(info)
 }

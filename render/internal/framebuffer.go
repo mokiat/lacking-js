@@ -70,3 +70,30 @@ func (f *Framebuffer) Release() {
 	f.id = 0
 	f.activeDrawBuffers = [4]bool{}
 }
+
+func DetermineContentFormat(framebuffer render.Framebuffer) render.DataFormat {
+	fb := framebuffer.(*Framebuffer)
+	wasmgl.BindFramebuffer(wasmgl.FRAMEBUFFER, fb.raw)
+	defer func() {
+		wasmgl.BindFramebuffer(wasmgl.FRAMEBUFFER, wasmgl.NilFramebuffer)
+	}()
+	glFormat := wasmgl.GetParameter(
+		wasmgl.IMPLEMENTATION_COLOR_READ_FORMAT,
+	).Int()
+	if glFormat != wasmgl.RGBA {
+		return render.DataFormatUnsupported
+	}
+	glType := wasmgl.GetParameter(
+		wasmgl.IMPLEMENTATION_COLOR_READ_TYPE,
+	).Int()
+	switch glType {
+	case wasmgl.UNSIGNED_BYTE:
+		return render.DataFormatRGBA8
+	case wasmgl.HALF_FLOAT:
+		return render.DataFormatRGBA16F
+	case wasmgl.FLOAT:
+		return render.DataFormatRGBA32F
+	default:
+		return render.DataFormatUnsupported
+	}
+}
