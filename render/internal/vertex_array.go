@@ -26,7 +26,7 @@ func NewVertexArray(info render.VertexArrayInfo) *VertexArray {
 
 	result := &VertexArray{
 		raw:         raw,
-		indexFormat: wasmgl.UNSIGNED_SHORT, // FIXME
+		indexFormat: glIndexFormat(info.IndexFormat),
 	}
 	result.id = vertexArrays.Allocate(result)
 	return result
@@ -140,5 +140,16 @@ func glAttribParams(format render.VertexAttributeFormat) (int, int, bool) {
 
 	default:
 		panic(fmt.Errorf("unknown attribute format: %d", format))
+	}
+}
+
+func glIndexFormat(format render.IndexFormat) int {
+	switch format {
+	case render.IndexFormatUnsignedShort:
+		return wasmgl.UNSIGNED_SHORT
+	case render.IndexFormatUnsignedInt:
+		return wasmgl.UNSIGNED_INT
+	default:
+		panic(fmt.Errorf("unknown index format: %d", format))
 	}
 }
