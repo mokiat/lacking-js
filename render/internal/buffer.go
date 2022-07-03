@@ -25,6 +25,10 @@ func NewPixelTransferBuffer(info render.BufferInfo) render.Buffer {
 	return result
 }
 
+func NewUniformBuffer(info render.BufferInfo) render.Buffer {
+	return newBuffer(info, wasmgl.UNIFORM_BUFFER)
+}
+
 func newBuffer(info render.BufferInfo, kind int) *Buffer {
 	raw := wasmgl.CreateBuffer()
 	wasmgl.BindBuffer(kind, raw)

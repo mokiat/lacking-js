@@ -263,6 +263,22 @@ func (r *Renderer) UniformMatrix4f(location render.UniformLocation, values [16]f
 	})
 }
 
+func (r *Renderer) UniformBufferUnit(index int, buffer render.Buffer) {
+	r.executeCommandUniformBufferUnit(CommandUniformBufferUnit{
+		Index:    uint32(index),
+		BufferID: buffer.(*Buffer).id,
+	})
+}
+
+func (r *Renderer) UniformBufferUnitRange(index int, buffer render.Buffer, offset, size int) {
+	r.executeCommandUniformBufferUnitRange(CommandUniformBufferUnitRange{
+		Index:    uint32(index),
+		BufferID: buffer.(*Buffer).id,
+		Offset:   uint32(offset),
+		Size:     uint32(size),
+	})
+}
+
 func (r *Renderer) TextureUnit(index int, texture render.Texture) {
 	r.executeCommandTextureUnit(CommandTextureUnit{
 		Index:     uint32(index),
@@ -344,6 +360,12 @@ func (r *Renderer) SubmitQueue(queue *CommandQueue) {
 		case CommandKindUniformMatrix4f:
 			command := PopCommand[CommandUniformMatrix4f](queue)
 			r.executeCommandUniformMatrix4f(command)
+		case CommandKindUniformBufferUnit:
+			command := PopCommand[CommandUniformBufferUnit](queue)
+			r.executeCommandUniformBufferUnit(command)
+		case CommandKindUniformBufferUnitRange:
+			command := PopCommand[CommandUniformBufferUnitRange](queue)
+			r.executeCommandUniformBufferUnitRange(command)
 		case CommandKindTextureUnit:
 			command := PopCommand[CommandTextureUnit](queue)
 			r.executeCommandTextureUnit(command)
@@ -542,6 +564,26 @@ func (r *Renderer) executeCommandUniformMatrix4f(command CommandUniformMatrix4f)
 		location.raw,
 		false,
 		command.Values[:],
+	)
+}
+
+func (r *Renderer) executeCommandUniformBufferUnit(command CommandUniformBufferUnit) {
+	buffer := buffers.Get(command.BufferID)
+	wasmgl.BindBufferBase(
+		wasmgl.UNIFORM_BUFFER,
+		int(command.Index),
+		buffer.raw,
+	)
+}
+
+func (r *Renderer) executeCommandUniformBufferUnitRange(command CommandUniformBufferUnitRange) {
+	buffer := buffers.Get(command.BufferID)
+	wasmgl.BindBufferRange(
+		wasmgl.UNIFORM_BUFFER,
+		int(command.Index),
+		buffer.raw,
+		int(command.Offset),
+		int(command.Size),
 	)
 }
 

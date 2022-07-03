@@ -109,6 +109,28 @@ func (q *CommandQueue) UniformMatrix4f(location render.UniformLocation, values [
 	})
 }
 
+func (q *CommandQueue) UniformBufferUnit(index int, buffer render.Buffer) {
+	PushCommand(q, CommandHeader{
+		Kind: CommandKindUniformBufferUnit,
+	})
+	PushCommand(q, CommandUniformBufferUnit{
+		Index:    uint32(index),
+		BufferID: buffer.(*Buffer).id,
+	})
+}
+
+func (q *CommandQueue) UniformBufferUnitRange(index int, buffer render.Buffer, offset, size int) {
+	PushCommand(q, CommandHeader{
+		Kind: CommandKindUniformBufferUnitRange,
+	})
+	PushCommand(q, CommandUniformBufferUnitRange{
+		Index:    uint32(index),
+		BufferID: buffer.(*Buffer).id,
+		Offset:   uint32(offset),
+		Size:     uint32(size),
+	})
+}
+
 func (q *CommandQueue) TextureUnit(index int, texture render.Texture) {
 	PushCommand(q, CommandHeader{
 		Kind: CommandKindTextureUnit,
@@ -216,6 +238,8 @@ const (
 	CommandKindUniform3f
 	CommandKindUniform4f
 	CommandKindUniformMatrix4f
+	CommandKindUniformBufferUnit
+	CommandKindUniformBufferUnitRange
 	CommandKindTextureUnit
 	CommandKindDraw
 	CommandKindDrawIndexed
@@ -345,6 +369,18 @@ type CommandUniform4f struct {
 type CommandUniformMatrix4f struct {
 	Location int32
 	Values   [16]float32
+}
+
+type CommandUniformBufferUnit struct {
+	Index    uint32
+	BufferID uint32
+}
+
+type CommandUniformBufferUnitRange struct {
+	Index    uint32
+	BufferID uint32
+	Offset   uint32
+	Size     uint32
 }
 
 type CommandTextureUnit struct {

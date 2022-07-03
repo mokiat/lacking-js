@@ -35,6 +35,12 @@ func NewProgram(info render.ProgramInfo) *Program {
 		}
 		wasmgl.UseProgram(wasmgl.NilProgram)
 	}
+	for _, binding := range info.UniformBindings {
+		location := wasmgl.GetUniformBlockIndex(program.raw, binding.Name)
+		if location != wasmgl.INVALID_INDEX {
+			wasmgl.UniformBlockBinding(program.raw, location, binding.Index)
+		}
+	}
 	return program
 }
 
