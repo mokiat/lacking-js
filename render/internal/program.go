@@ -25,6 +25,16 @@ func NewProgram(info render.ProgramInfo) *Program {
 		log.Error("Program link error: %v", err)
 	}
 	program.id = programs.Allocate(program)
+	if len(info.TextureBindings) > 0 {
+		wasmgl.UseProgram(program.raw)
+		for _, binding := range info.TextureBindings {
+			location := wasmgl.GetUniformLocation(program.raw, binding.Name)
+			if location.IsValid() {
+				wasmgl.Uniform1i(location, binding.Index)
+			}
+		}
+		wasmgl.UseProgram(wasmgl.NilProgram)
+	}
 	return program
 }
 
