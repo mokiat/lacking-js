@@ -32,9 +32,14 @@ layout(location = 0) out vec4 fbColor0Out;
 uniform sampler2D fbColor0TextureIn;
 uniform sampler2D fbColor1TextureIn;
 uniform sampler2D fbDepthTextureIn;
-uniform mat4 projectionMatrixIn;
-uniform mat4 viewMatrixIn;
-uniform mat4 cameraMatrixIn;
+
+layout (std140) uniform Camera
+{
+	mat4 projectionMatrixIn;
+	mat4 viewMatrixIn;
+	mat4 cameraMatrixIn;
+};
+
 uniform vec3 lightDirectionIn;
 uniform vec3 lightIntensityIn;
 

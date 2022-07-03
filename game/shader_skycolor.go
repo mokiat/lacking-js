@@ -17,8 +17,12 @@ func newSkycolorShaderSet() graphics.ShaderSet {
 const colorSkyboxVertexShader = `
 layout(location = 0) in vec3 coordIn;
 
-uniform mat4 projectionMatrixIn;
-uniform mat4 viewMatrixIn;
+layout (std140) uniform Camera
+{
+	mat4 projectionMatrixIn;
+	mat4 viewMatrixIn;
+	mat4 cameraMatrixIn;
+};
 
 void main()
 {

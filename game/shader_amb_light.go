@@ -34,9 +34,13 @@ uniform sampler2D fbColor1TextureIn;
 uniform sampler2D fbDepthTextureIn;
 uniform samplerCube reflectionTextureIn;
 uniform samplerCube refractionTextureIn;
-uniform mat4 projectionMatrixIn;
-uniform mat4 viewMatrixIn;
-uniform mat4 cameraMatrixIn;
+
+layout (std140) uniform Camera
+{
+	mat4 projectionMatrixIn;
+	mat4 viewMatrixIn;
+	mat4 cameraMatrixIn;
+};
 
 smooth in vec2 texCoordInOut;
 

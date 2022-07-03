@@ -27,9 +27,14 @@ layout(location = 1) in vec3 normalIn;
 layout(location = 3) in vec2 texCoordIn;
 #endif
 
-uniform mat4 projectionMatrixIn;
+layout (std140) uniform Camera
+{
+	mat4 projectionMatrixIn;
+	mat4 viewMatrixIn;
+	mat4 cameraMatrixIn;
+};
+
 uniform mat4 modelMatrixIn;
-uniform mat4 viewMatrixIn;
 
 smooth out vec3 normalInOut;
 #if defined(USES_TEX_COORD0)
