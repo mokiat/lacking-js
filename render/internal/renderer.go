@@ -52,6 +52,7 @@ func NewRenderer() *Renderer {
 type Renderer struct {
 	framebuffer           *Framebuffer
 	invalidateAttachments []int
+	program               *Program
 	topology              int
 	indexType             int
 
@@ -193,6 +194,7 @@ func (r *Renderer) EndRenderPass() {
 }
 
 func (r *Renderer) Invalidate() {
+	r.program = nil
 	r.isDirty = true
 	r.isInvalidated = true
 }
@@ -378,6 +380,10 @@ func (r *Renderer) SubmitQueue(queue *CommandQueue) {
 		case CommandKindCopyContentToBuffer:
 			command := PopCommand[CommandCopyContentToBuffer](queue)
 			r.executeCommandCopyContentToBuffer(command)
+		case CommandKindUpdateBufferData:
+			command := PopCommand[CommandUpdateBufferData](queue)
+			data := PopData(queue, command.Count)
+			r.executeCommandUpdateBufferData(command, data)
 		default:
 			panic(fmt.Errorf("unknown command kind: %v", header.Kind))
 		}
@@ -387,7 +393,10 @@ func (r *Renderer) SubmitQueue(queue *CommandQueue) {
 
 func (r *Renderer) executeCommandBindPipeline(command CommandBindPipeline) {
 	program := programs.Get(command.ProgramID)
-	wasmgl.UseProgram(program.raw)
+	if program != r.program {
+		r.program = program
+		wasmgl.UseProgram(program.raw)
+	}
 	r.executeCommandTopology(command.Topology)
 	r.executeCommandCullTest(command.CullTest)
 	r.executeCommandFrontFace(command.FrontFace)
@@ -633,6 +642,13 @@ func (r *Renderer) executeCommandCopyContentToBuffer(command CommandCopyContentT
 		buffer.kind,
 		wasmgl.NilBuffer,
 	)
+}
+
+func (r *Renderer) executeCommandUpdateBufferData(command CommandUpdateBufferData, data []byte) {
+	buffer := buffers.Get(command.BufferID)
+	wasmgl.BindBuffer(buffer.kind, buffer.raw)
+	wasmgl.BufferSubData(buffer.kind, int(command.Offset), data)
+	wasmgl.BindBuffer(buffer.kind, buffer.raw)
 }
 
 func (r *Renderer) validateState() {

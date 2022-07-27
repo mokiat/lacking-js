@@ -10,7 +10,7 @@ import (
 
 func NewCommandQueue() *CommandQueue {
 	return &CommandQueue{
-		data: make([]byte, 1024*1024), // TODO: Start smaller and allow for growth
+		data: make([]byte, 1024*1024),
 	}
 }
 
@@ -193,8 +193,26 @@ func (q *CommandQueue) CopyContentToBuffer(info render.CopyContentToBufferInfo) 
 	})
 }
 
+func (q *CommandQueue) UpdateBufferData(buffer render.Buffer, info render.BufferUpdateInfo) {
+	PushCommand(q, CommandHeader{
+		Kind: CommandKindUpdateBufferData,
+	})
+	PushCommand(q, CommandUpdateBufferData{
+		BufferID: buffer.(*Buffer).id,
+		Offset:   uint32(info.Offset),
+		Count:    uint32(len(info.Data)),
+	})
+	PushData(q, info.Data)
+}
+
 func (q *CommandQueue) Release() {
 	q.data = nil
+}
+
+func (q *CommandQueue) ensure(size int) {
+	if int(q.writeOffset)+size > len(q.data) {
+		q.data = append(q.data, make([]byte, len(q.data))...) // double the size
+	}
 }
 
 func MoreCommands(queue *CommandQueue) bool {
@@ -202,9 +220,17 @@ func MoreCommands(queue *CommandQueue) bool {
 }
 
 func PushCommand[T any](queue *CommandQueue, command T) {
+	size := unsafe.Sizeof(command)
+	queue.ensure(int(size))
 	target := (*T)(unsafe.Add(unsafe.Pointer(&queue.data[0]), queue.writeOffset))
 	*target = command
-	queue.writeOffset += unsafe.Sizeof(command)
+	queue.writeOffset += size
+}
+
+func PushData(queue *CommandQueue, data []byte) {
+	queue.ensure(len(data))
+	copy(queue.data[queue.writeOffset:], data)
+	queue.writeOffset += uintptr(len(data))
 }
 
 func PopCommand[T any](queue *CommandQueue) T {
@@ -212,6 +238,12 @@ func PopCommand[T any](queue *CommandQueue) T {
 	command := *target
 	queue.readOffset += unsafe.Sizeof(command)
 	return command
+}
+
+func PopData(queue *CommandQueue, count uint32) []byte {
+	result := queue.data[queue.readOffset : queue.readOffset+uintptr(count)]
+	queue.readOffset += uintptr(count)
+	return result
 }
 
 type CommandKind uint8
@@ -244,6 +276,7 @@ const (
 	CommandKindDraw
 	CommandKindDrawIndexed
 	CommandKindCopyContentToBuffer
+	CommandKindUpdateBufferData
 )
 
 type CommandHeader struct {
@@ -409,4 +442,10 @@ type CommandCopyContentToBuffer struct {
 	Format       uint32
 	XType        uint32
 	BufferOffset uint32
+}
+
+type CommandUpdateBufferData struct {
+	BufferID uint32
+	Offset   uint32
+	Count    uint32
 }
