@@ -160,18 +160,22 @@ func (l *loop) GamepadState(index int) (app.GamepadState, bool) {
 	buttons := gamepad.Get("buttons")
 	axes := gamepad.Get("axes")
 	return app.GamepadState{
-		LeftStickX:     float32(axes.Index(0).Float()),
-		LeftStickY:     -float32(axes.Index(1).Float()),
-		RightStickX:    float32(axes.Index(2).Float()),
-		RightStickY:    -float32(axes.Index(3).Float()),
-		LeftTrigger:    float32(buttons.Index(6).Get("value").Float()),
-		RightTrigger:   float32(buttons.Index(7).Get("value").Float()),
-		LeftBumper:     buttons.Index(4).Get("pressed").Bool(),
-		RightBumper:    buttons.Index(5).Get("pressed").Bool(),
-		SquareButton:   buttons.Index(2).Get("pressed").Bool(),
-		CircleButton:   buttons.Index(1).Get("pressed").Bool(),
-		TriangleButton: buttons.Index(3).Get("pressed").Bool(),
-		CrossButton:    buttons.Index(0).Get("pressed").Bool(),
+		LeftStickX:      axes.Index(0).Float(),
+		LeftStickY:      -axes.Index(1).Float(),
+		RightStickX:     axes.Index(2).Float(),
+		RightStickY:     -axes.Index(3).Float(),
+		LeftTrigger:     buttons.Index(6).Get("value").Float(),
+		RightTrigger:    buttons.Index(7).Get("value").Float(),
+		LeftBumper:      buttons.Index(4).Get("pressed").Bool(),
+		RightBumper:     buttons.Index(5).Get("pressed").Bool(),
+		SquareButton:    buttons.Index(2).Get("pressed").Bool(),
+		CircleButton:    buttons.Index(1).Get("pressed").Bool(),
+		TriangleButton:  buttons.Index(3).Get("pressed").Bool(),
+		CrossButton:     buttons.Index(0).Get("pressed").Bool(),
+		DpadUpButton:    buttons.Index(12).Get("pressed").Bool(),
+		DpadDownButton:  buttons.Index(13).Get("pressed").Bool(),
+		DpadLeftButton:  buttons.Index(14).Get("pressed").Bool(),
+		DpadRightButton: buttons.Index(15).Get("pressed").Bool(),
 	}, true
 }
 
