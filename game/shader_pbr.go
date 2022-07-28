@@ -46,10 +46,18 @@ layout (std140) uniform Camera
 	mat4 cameraMatrixIn;
 };
 
+#if defined(USES_BONES)
+layout (std140) uniform Model
+{
+	mat4 modelMatrixIn;
+	mat4 boneMatrixIn[255];
+};
+#else
 layout (std140) uniform Model
 {
 	mat4 modelMatrixIn[256];
 };
+#endif
 
 smooth out vec3 normalInOut;
 #if defined(USES_TEX_COORD0)
@@ -62,10 +70,10 @@ void main()
 	texCoordInOut = texCoordIn;
 #endif
 #if defined(USES_BONES)
-	mat4 modelMatrixA = modelMatrixIn[0] * modelMatrixIn[jointsIn.x+uint(1)];
-	mat4 modelMatrixB = modelMatrixIn[0] * modelMatrixIn[jointsIn.y+uint(1)];
-	mat4 modelMatrixC = modelMatrixIn[0] * modelMatrixIn[jointsIn.z+uint(1)];
-	mat4 modelMatrixD = modelMatrixIn[0] * modelMatrixIn[jointsIn.w+uint(1)];
+	mat4 modelMatrixA = modelMatrixIn * boneMatrixIn[jointsIn.x];
+	mat4 modelMatrixB = modelMatrixIn * boneMatrixIn[jointsIn.y];
+	mat4 modelMatrixC = modelMatrixIn * boneMatrixIn[jointsIn.z];
+	mat4 modelMatrixD = modelMatrixIn * boneMatrixIn[jointsIn.w];
 	vec4 worldPosition =
 		modelMatrixA * (weightsIn.x * coordIn) +
 		modelMatrixB * (weightsIn.y * coordIn) +
