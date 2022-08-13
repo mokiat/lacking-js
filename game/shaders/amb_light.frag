@@ -1,32 +1,3 @@
-package game
-
-import (
-	"github.com/mokiat/lacking-js/internal"
-	"github.com/mokiat/lacking/game/graphics"
-)
-
-func newAmbientLightShaderSet() graphics.ShaderSet {
-	vsBuilder := internal.NewShaderSourceBuilder(ambientLightVertexShader)
-	fsBuilder := internal.NewShaderSourceBuilder(ambientLightFragmentShader)
-	return graphics.ShaderSet{
-		VertexShader:   vsBuilder.Build,
-		FragmentShader: fsBuilder.Build,
-	}
-}
-
-const ambientLightVertexShader = `
-layout(location = 0) in vec3 coordIn;
-
-smooth out vec2 texCoordInOut;
-
-void main()
-{
-	texCoordInOut = (coordIn.xy + 1.0) / 2.0;
-	gl_Position = vec4(coordIn.xy, 0.0, 1.0);
-}
-`
-
-const ambientLightFragmentShader = `
 layout(location = 0) out vec4 fbColor0Out;
 
 uniform sampler2D fbColor0TextureIn;
@@ -135,4 +106,3 @@ void main()
 	));
 	fbColor0Out = vec4(hdr, 1.0);
 }
-`
