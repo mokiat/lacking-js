@@ -4,18 +4,20 @@ import "strings"
 
 func NewShaderSourceBuilder(template string) *ShaderSourceBuilder {
 	return &ShaderSourceBuilder{
-		version:        "300 es",
-		floatPrecision: "mediump",
-		features:       []string{},
-		template:       template,
+		version:                  "300 es",
+		floatPrecision:           "mediump",
+		sampler2DShadowPrecision: "mediump",
+		features:                 []string{},
+		template:                 template,
 	}
 }
 
 type ShaderSourceBuilder struct {
-	version        string
-	floatPrecision string
-	features       []string
-	template       string
+	version                  string
+	floatPrecision           string
+	sampler2DShadowPrecision string
+	features                 []string
+	template                 string
 }
 
 func (b *ShaderSourceBuilder) SetFloatPrecision(precision string) {
@@ -38,6 +40,9 @@ func (b *ShaderSourceBuilder) Build() string {
 	builder.WriteString("precision ")
 	builder.WriteString(b.floatPrecision)
 	builder.WriteString(" float;")
+	builder.WriteString("precision ")
+	builder.WriteString(b.sampler2DShadowPrecision)
+	builder.WriteString(" sampler2DShadow;")
 	builder.WriteRune('\n')
 	for _, feature := range b.features {
 		builder.WriteString("#define ")
