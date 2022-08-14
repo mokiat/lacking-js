@@ -17,7 +17,7 @@ type Fence struct {
 }
 
 func (f *Fence) Status() render.FenceStatus {
-	switch wasmgl.GetSyncParameter(f.raw, wasmgl.SYNC_STATUS) {
+	switch wasmgl.GetSyncParameter(f.raw, wasmgl.SYNC_STATUS).GLenum() {
 	case wasmgl.SIGNALED:
 		return render.FenceStatusSuccess
 	case wasmgl.UNSIGNALED:

@@ -16,7 +16,7 @@ func NewIndexBuffer(info render.BufferInfo) *Buffer {
 func NewPixelTransferBuffer(info render.BufferInfo) render.Buffer {
 	raw := wasmgl.CreateBuffer()
 	wasmgl.BindBuffer(wasmgl.PIXEL_PACK_BUFFER, raw)
-	wasmgl.BufferData(wasmgl.PIXEL_PACK_BUFFER, info.Size, nil, wasmgl.DYNAMIC_READ)
+	wasmgl.BufferData(wasmgl.PIXEL_PACK_BUFFER, wasmgl.GLintptr(info.Size), nil, wasmgl.DYNAMIC_READ)
 	result := &Buffer{
 		raw:  raw,
 		kind: wasmgl.PIXEL_PACK_BUFFER,
@@ -29,13 +29,13 @@ func NewUniformBuffer(info render.BufferInfo) render.Buffer {
 	return newBuffer(info, wasmgl.UNIFORM_BUFFER)
 }
 
-func newBuffer(info render.BufferInfo, kind int) *Buffer {
+func newBuffer(info render.BufferInfo, kind wasmgl.GLenum) *Buffer {
 	raw := wasmgl.CreateBuffer()
 	wasmgl.BindBuffer(kind, raw)
 	if info.Data != nil {
-		wasmgl.BufferData(kind, len(info.Data), info.Data, glBufferUsage(info.Dynamic))
+		wasmgl.BufferData(kind, wasmgl.GLintptr(len(info.Data)), info.Data, glBufferUsage(info.Dynamic))
 	} else {
-		wasmgl.BufferData(kind, info.Size, nil, glBufferUsage(info.Dynamic))
+		wasmgl.BufferData(kind, wasmgl.GLintptr(info.Size), nil, glBufferUsage(info.Dynamic))
 	}
 	result := &Buffer{
 		raw:  raw,
@@ -49,17 +49,17 @@ type Buffer struct {
 	render.BufferObject
 	id   uint32
 	raw  wasmgl.Buffer
-	kind int
+	kind wasmgl.GLenum
 }
 
 func (b *Buffer) Update(info render.BufferUpdateInfo) {
 	wasmgl.BindBuffer(b.kind, b.raw)
-	wasmgl.BufferSubData(b.kind, info.Offset, info.Data)
+	wasmgl.BufferSubData(b.kind, wasmgl.GLintptr(info.Offset), info.Data)
 }
 
 func (b *Buffer) Fetch(info render.BufferFetchInfo) {
 	wasmgl.BindBuffer(b.kind, b.raw)
-	wasmgl.GetBufferSubData(b.kind, info.Offset, info.Target)
+	wasmgl.GetBufferSubData(b.kind, wasmgl.GLintptr(info.Offset), info.Target)
 }
 
 func (b *Buffer) Release() {
@@ -70,7 +70,7 @@ func (b *Buffer) Release() {
 	b.id = 0
 }
 
-func glBufferUsage(dynamic bool) int {
+func glBufferUsage(dynamic bool) wasmgl.GLenum {
 	if dynamic {
 		return wasmgl.DYNAMIC_DRAW
 	} else {

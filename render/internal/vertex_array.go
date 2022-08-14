@@ -15,12 +15,12 @@ func NewVertexArray(info render.VertexArrayInfo) *VertexArray {
 		if vertexBuffer, ok := binding.VertexBuffer.(*Buffer); ok {
 			wasmgl.BindBuffer(vertexBuffer.kind, vertexBuffer.raw)
 		}
-		wasmgl.EnableVertexAttribArray(attribute.Location)
+		wasmgl.EnableVertexAttribArray(wasmgl.GLuint(attribute.Location))
 		count, compType, normalized, integer := glAttribParams(attribute.Format)
 		if integer {
-			wasmgl.VertexAttribIPointer(attribute.Location, count, compType, binding.Stride, attribute.Offset)
+			wasmgl.VertexAttribIPointer(wasmgl.GLuint(attribute.Location), count, compType, wasmgl.GLsizei(binding.Stride), wasmgl.GLintptr(attribute.Offset))
 		} else {
-			wasmgl.VertexAttribPointer(attribute.Location, count, compType, normalized, binding.Stride, attribute.Offset)
+			wasmgl.VertexAttribPointer(wasmgl.GLuint(attribute.Location), count, compType, normalized, wasmgl.GLsizei(binding.Stride), wasmgl.GLintptr(attribute.Offset))
 		}
 	}
 	if indexBuffer, ok := info.IndexBuffer.(*Buffer); ok {
@@ -40,7 +40,7 @@ type VertexArray struct {
 	render.VertexArrayObject
 	id          uint32
 	raw         wasmgl.VertexArray
-	indexFormat int // TODO
+	indexFormat wasmgl.GLenum
 }
 
 func (a *VertexArray) Release() {
@@ -50,7 +50,7 @@ func (a *VertexArray) Release() {
 	a.id = 0
 }
 
-func glAttribParams(format render.VertexAttributeFormat) (int, int, bool, bool) {
+func glAttribParams(format render.VertexAttributeFormat) (wasmgl.GLint, wasmgl.GLenum, wasmgl.GLboolean, bool) {
 	switch format {
 	case render.VertexAttributeFormatR32F:
 		return 1, wasmgl.FLOAT, false, false
@@ -156,7 +156,7 @@ func glAttribParams(format render.VertexAttributeFormat) (int, int, bool, bool) 
 	}
 }
 
-func glIndexFormat(format render.IndexFormat) int {
+func glIndexFormat(format render.IndexFormat) wasmgl.GLenum {
 	switch format {
 	case render.IndexFormatUnsignedShort:
 		return wasmgl.UNSIGNED_SHORT

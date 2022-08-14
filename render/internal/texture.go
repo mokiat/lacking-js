@@ -15,12 +15,12 @@ func NewColorTexture2D(info render.ColorTexture2DInfo) *Texture {
 
 	levels := glMipmapLevels(info.Width, info.Height, info.Mipmapping)
 	internalFormat := glInternalFormat(info.Format, info.GammaCorrection)
-	wasmgl.TexStorage2D(wasmgl.TEXTURE_2D, levels, internalFormat, info.Width, info.Height)
+	wasmgl.TexStorage2D(wasmgl.TEXTURE_2D, levels, internalFormat, wasmgl.GLsizei(info.Width), wasmgl.GLsizei(info.Height))
 
 	if info.Data != nil {
 		dataFormat := glDataFormat(info.Format)
 		componentType := glDataComponentType(info.Format)
-		wasmgl.TexSubImage2D(wasmgl.TEXTURE_2D, 0, 0, 0, info.Width, info.Height, dataFormat, componentType, info.Data)
+		wasmgl.TexSubImage2D(wasmgl.TEXTURE_2D, 0, 0, 0, wasmgl.GLsizei(info.Width), wasmgl.GLsizei(info.Height), dataFormat, componentType, info.Data)
 
 		if info.Mipmapping {
 			wasmgl.GenerateMipmap(wasmgl.TEXTURE_2D)
@@ -40,9 +40,18 @@ func NewDepthTexture2D(info render.DepthTexture2DInfo) *Texture {
 	wasmgl.BindTexture(wasmgl.TEXTURE_2D, raw)
 	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_WRAP_S, wasmgl.CLAMP_TO_EDGE)
 	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_WRAP_T, wasmgl.CLAMP_TO_EDGE)
-	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_MIN_FILTER, wasmgl.NEAREST)
-	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_MAG_FILTER, wasmgl.NEAREST)
-	wasmgl.TexStorage2D(wasmgl.TEXTURE_2D, 1, wasmgl.DEPTH_COMPONENT24, info.Width, info.Height)
+
+	if info.ClippedValue != nil {
+		wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_MIN_FILTER, wasmgl.LINEAR)
+		wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_MAG_FILTER, wasmgl.LINEAR)
+		wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_COMPARE_MODE, wasmgl.COMPARE_REF_TO_TEXTURE)
+		wasmgl.TexStorage2D(wasmgl.TEXTURE_2D, 1, wasmgl.DEPTH_COMPONENT32F, wasmgl.GLsizei(info.Width), wasmgl.GLsizei(info.Height))
+	} else {
+		wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_MIN_FILTER, wasmgl.NEAREST)
+		wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_MAG_FILTER, wasmgl.NEAREST)
+		wasmgl.TexStorage2D(wasmgl.TEXTURE_2D, 1, wasmgl.DEPTH_COMPONENT24, wasmgl.GLsizei(info.Width), wasmgl.GLsizei(info.Height))
+	}
+
 	result := &Texture{
 		raw:  raw,
 		kind: wasmgl.TEXTURE_2D,
@@ -59,7 +68,7 @@ func NewStencilTexture2D(info render.StencilTexture2DInfo) *Texture {
 	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_MIN_FILTER, wasmgl.NEAREST)
 	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_MAG_FILTER, wasmgl.NEAREST)
 	// NOTE: Firefox does not support wasmgl.STENCIL_INDEX8
-	wasmgl.TexStorage2D(wasmgl.TEXTURE_2D, 1, wasmgl.DEPTH24_STENCIL8, info.Width, info.Height)
+	wasmgl.TexStorage2D(wasmgl.TEXTURE_2D, 1, wasmgl.DEPTH24_STENCIL8, wasmgl.GLsizei(info.Width), wasmgl.GLsizei(info.Height))
 	result := &Texture{
 		raw:  raw,
 		kind: wasmgl.TEXTURE_2D,
@@ -75,7 +84,7 @@ func NewDepthStencilTexture2D(info render.DepthStencilTexture2DInfo) *Texture {
 	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_WRAP_T, wasmgl.CLAMP_TO_EDGE)
 	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_MIN_FILTER, wasmgl.NEAREST)
 	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_MAG_FILTER, wasmgl.NEAREST)
-	wasmgl.TexStorage2D(wasmgl.TEXTURE_2D, 1, wasmgl.DEPTH24_STENCIL8, info.Width, info.Height)
+	wasmgl.TexStorage2D(wasmgl.TEXTURE_2D, 1, wasmgl.DEPTH24_STENCIL8, wasmgl.GLsizei(info.Width), wasmgl.GLsizei(info.Height))
 	result := &Texture{
 		raw:  raw,
 		kind: wasmgl.TEXTURE_2D,
@@ -94,27 +103,27 @@ func NewColorTextureCube(info render.ColorTextureCubeInfo) *Texture {
 
 	levels := glMipmapLevels(info.Dimension, info.Dimension, info.Mipmapping)
 	internalFormat := glInternalFormat(info.Format, info.GammaCorrection)
-	wasmgl.TexStorage2D(wasmgl.TEXTURE_CUBE_MAP, levels, internalFormat, info.Dimension, info.Dimension)
+	wasmgl.TexStorage2D(wasmgl.TEXTURE_CUBE_MAP, levels, internalFormat, wasmgl.GLsizei(info.Dimension), wasmgl.GLsizei(info.Dimension))
 
 	dataFormat := glDataFormat(info.Format)
 	componentType := glDataComponentType(info.Format)
 	if info.RightSideData != nil {
-		wasmgl.TexSubImage2D(wasmgl.TEXTURE_CUBE_MAP_POSITIVE_X, 0, 0, 0, info.Dimension, info.Dimension, dataFormat, componentType, info.RightSideData)
+		wasmgl.TexSubImage2D(wasmgl.TEXTURE_CUBE_MAP_POSITIVE_X, 0, 0, 0, wasmgl.GLsizei(info.Dimension), wasmgl.GLsizei(info.Dimension), dataFormat, componentType, info.RightSideData)
 	}
 	if info.LeftSideData != nil {
-		wasmgl.TexSubImage2D(wasmgl.TEXTURE_CUBE_MAP_NEGATIVE_X, 0, 0, 0, info.Dimension, info.Dimension, dataFormat, componentType, info.LeftSideData)
+		wasmgl.TexSubImage2D(wasmgl.TEXTURE_CUBE_MAP_NEGATIVE_X, 0, 0, 0, wasmgl.GLsizei(info.Dimension), wasmgl.GLsizei(info.Dimension), dataFormat, componentType, info.LeftSideData)
 	}
 	if info.BottomSideData != nil {
-		wasmgl.TexSubImage2D(wasmgl.TEXTURE_CUBE_MAP_POSITIVE_Y, 0, 0, 0, info.Dimension, info.Dimension, dataFormat, componentType, info.BottomSideData)
+		wasmgl.TexSubImage2D(wasmgl.TEXTURE_CUBE_MAP_POSITIVE_Y, 0, 0, 0, wasmgl.GLsizei(info.Dimension), wasmgl.GLsizei(info.Dimension), dataFormat, componentType, info.BottomSideData)
 	}
 	if info.TopSideData != nil {
-		wasmgl.TexSubImage2D(wasmgl.TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, 0, 0, info.Dimension, info.Dimension, dataFormat, componentType, info.TopSideData)
+		wasmgl.TexSubImage2D(wasmgl.TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, 0, 0, wasmgl.GLsizei(info.Dimension), wasmgl.GLsizei(info.Dimension), dataFormat, componentType, info.TopSideData)
 	}
 	if info.FrontSideData != nil {
-		wasmgl.TexSubImage2D(wasmgl.TEXTURE_CUBE_MAP_POSITIVE_Z, 0, 0, 0, info.Dimension, info.Dimension, dataFormat, componentType, info.FrontSideData)
+		wasmgl.TexSubImage2D(wasmgl.TEXTURE_CUBE_MAP_POSITIVE_Z, 0, 0, 0, wasmgl.GLsizei(info.Dimension), wasmgl.GLsizei(info.Dimension), dataFormat, componentType, info.FrontSideData)
 	}
 	if info.BackSideData != nil {
-		wasmgl.TexSubImage2D(wasmgl.TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, 0, 0, info.Dimension, info.Dimension, dataFormat, componentType, info.BackSideData)
+		wasmgl.TexSubImage2D(wasmgl.TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, 0, 0, wasmgl.GLsizei(info.Dimension), wasmgl.GLsizei(info.Dimension), dataFormat, componentType, info.BackSideData)
 	}
 
 	// TODO: Move as separate command
@@ -134,7 +143,7 @@ type Texture struct {
 	render.TextureObject
 	id   uint32
 	raw  wasmgl.Texture
-	kind int
+	kind wasmgl.GLenum
 }
 
 func (t *Texture) Release() {
@@ -144,7 +153,7 @@ func (t *Texture) Release() {
 	t.id = 0
 }
 
-func glWrap(wrap render.WrapMode) int {
+func glWrap(wrap render.WrapMode) wasmgl.GLint {
 	switch wrap {
 	case render.WrapModeClamp:
 		return wasmgl.CLAMP_TO_EDGE
@@ -157,7 +166,7 @@ func glWrap(wrap render.WrapMode) int {
 	}
 }
 
-func glFilter(filter render.FilterMode, mipmaps bool) int {
+func glFilter(filter render.FilterMode, mipmaps bool) wasmgl.GLint {
 	switch filter {
 	case render.FilterModeNearest:
 		if mipmaps {
@@ -174,11 +183,11 @@ func glFilter(filter render.FilterMode, mipmaps bool) int {
 	}
 }
 
-func glMipmapLevels(width, height int, mipmapping bool) int {
+func glMipmapLevels(width, height int, mipmapping bool) wasmgl.GLsizei {
 	if !mipmapping {
 		return 1
 	}
-	count := int(1)
+	count := wasmgl.GLsizei(1)
 	for width > 1 || height > 1 {
 		width /= 2
 		height /= 2
@@ -187,7 +196,7 @@ func glMipmapLevels(width, height int, mipmapping bool) int {
 	return count
 }
 
-func glInternalFormat(format render.DataFormat, gammaCorrection bool) int {
+func glInternalFormat(format render.DataFormat, gammaCorrection bool) wasmgl.GLenum {
 	switch format {
 	case render.DataFormatRGBA8:
 		if gammaCorrection {
@@ -203,14 +212,14 @@ func glInternalFormat(format render.DataFormat, gammaCorrection bool) int {
 	}
 }
 
-func glDataFormat(format render.DataFormat) int {
+func glDataFormat(format render.DataFormat) wasmgl.GLenum {
 	switch format {
 	default:
 		return wasmgl.RGBA
 	}
 }
 
-func glDataComponentType(format render.DataFormat) int {
+func glDataComponentType(format render.DataFormat) wasmgl.GLenum {
 	switch format {
 	case render.DataFormatRGBA8:
 		return wasmgl.UNSIGNED_BYTE

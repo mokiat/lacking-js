@@ -30,7 +30,7 @@ func NewProgram(info render.ProgramInfo) *Program {
 		for _, binding := range info.TextureBindings {
 			location := wasmgl.GetUniformLocation(program.raw, binding.Name)
 			if location.IsValid() {
-				wasmgl.Uniform1i(location, binding.Index)
+				wasmgl.Uniform1i(location, wasmgl.GLint(binding.Index))
 			}
 		}
 		wasmgl.UseProgram(wasmgl.NilProgram)
@@ -38,7 +38,7 @@ func NewProgram(info render.ProgramInfo) *Program {
 	for _, binding := range info.UniformBindings {
 		location := wasmgl.GetUniformBlockIndex(program.raw, binding.Name)
 		if location != wasmgl.INVALID_INDEX {
-			wasmgl.UniformBlockBinding(program.raw, location, binding.Index)
+			wasmgl.UniformBlockBinding(program.raw, location, wasmgl.GLuint(binding.Index))
 		}
 	}
 	return program
@@ -81,7 +81,7 @@ func (p *Program) link() error {
 
 func (p *Program) isLinkSuccessful() bool {
 	result := wasmgl.GetProgramParameter(p.raw, wasmgl.LINK_STATUS)
-	return result.Bool()
+	return result.GLboolean()
 }
 
 func (p *Program) getInfoLog() string {
