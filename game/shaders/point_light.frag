@@ -3,7 +3,6 @@ layout(location = 0) out vec4 fbColor0Out;
 uniform sampler2D fbColor0TextureIn;
 uniform sampler2D fbColor1TextureIn;
 uniform sampler2D fbDepthTextureIn;
-uniform sampler2DShadow fbShadowTextureIn;
 
 layout (std140) uniform Camera
 {
@@ -19,7 +18,6 @@ layout (std140) uniform Light
 	mat4 lightMatrixIn;
 };
 
-uniform vec3 lightDirectionIn;
 uniform vec3 lightIntensityIn;
 
 smooth in vec2 texCoordInOut;
@@ -89,13 +87,6 @@ vec3 calculateDirectionalHDR(directionalSetup s) {
 	return (reflectedHDR + refractedHDR) * s.lightIntensity * clamp(dot(s.normal, s.lightDirection), 0.0, 1.0);
 }
 
-float textureClampToBorder(sampler2DShadow tex, vec3 coord, float dValue) {
-	if (coord.x < 0.0 || coord.x > 1.0 || coord.y < 0.0 || coord.y > 1.0) {
-		return dValue;
-	}
-	return texture(tex, coord);
-}
-
 void main()
 {
 	vec3 ndcPosition = vec3(
@@ -122,45 +113,19 @@ void main()
 	vec3 refractedColor = baseColor * (1.0 - metalness);
 	vec3 reflectedColor = mix(vec3(0.02), baseColor, metalness);
 
+	vec3 lightDiration = lightMatrixIn[3].xyz - worldPosition;
+
+	// float attenuation = 1.0; // TODO: 1.0/dot(lightDiration, lightDiration)
+	float attenuation = 1.0 / (1.0 + dot(lightDiration, lightDiration));
+
 	vec3 hdr = calculateDirectionalHDR(directionalSetup(
 		roughness,
 		reflectedColor,
 		refractedColor,
 		normalize(cameraPosition - worldPosition),
-		normalize(lightDirectionIn),
+		normalize(lightDiration),
 		normal,
 		lightIntensityIn
 	));
-
-	vec4 lightPosition = lightProjectionMatrixIn * lightViewMatrixIn * vec4(worldPosition, 1.0);
-	float directness = clamp(dot(normal, normalize(lightDirectionIn)), 0.0, 1.0);
-	lightPosition.xyz = lightPosition.xyz * 0.5 + 0.5;
-	lightPosition.z /= lightPosition.w;
-	lightPosition.z -= 0.0005;
-
-	vec2 shift = 1.0 / vec2(textureSize(fbShadowTextureIn, 0));
-
-	vec3 shifts[9];
-	shifts[0] =	vec3(0.0, 0.0, 0.0);
-	shifts[1] =	vec3(-1.0, 0.0, 0.0);
-	shifts[2] =	vec3(1.0, 0.0, 0.0);
-	shifts[3] =	vec3(0.0, -1.0, 0.0);
-	shifts[4] =	vec3(0.0, 1.0, 0.0);
-	shifts[5] =	vec3(-1.0, -1.0, 0.0);
-	shifts[6] =	vec3(1.0, -1.0, 0.0);
-	shifts[7] =	vec3(-1.0, 1.0, 0.0);
-	shifts[8] =	vec3(1.0, 1.0, 0.0);
-
-	float amount = 0.0;
-	for (int i = 0; i < 9; i++) {
-		highp vec3 texPos = lightPosition.xyz + shifts[i] * vec3(shift.x, shift.y, 1.0);
-		// float probability = texture(fbShadowTextureIn, texPos);
-		float probability = textureClampToBorder(fbShadowTextureIn, texPos, 1.0);
-		amount = max(amount, probability);
-	}
-
-	float factor = (clamp(directness, 0.3, 0.5) - 0.3) / 0.2;
-	amount = amount * factor;
-
-	fbColor0Out = vec4(hdr * amount, 1.0);
+	fbColor0Out = vec4(hdr * attenuation, 1.0);
 }

@@ -27,6 +27,12 @@ var (
 	//go:embed shaders/amb_light.frag
 	ambientLightFragmentShader string
 
+	//go:embed shaders/point_light.vert
+	pointLightVertexShader string
+
+	//go:embed shaders/point_light.frag
+	pointLightFragmentShader string
+
 	//go:embed shaders/shadow.vert
 	shadowMappingVertexShader string
 
@@ -64,6 +70,7 @@ func NewShaderCollection() graphics.ShaderCollection {
 		PBRGeometrySet:      newPBRGeometrySet,
 		DirectionalLightSet: newDirectionalLightShaderSet,
 		AmbientLightSet:     newAmbientLightShaderSet,
+		PointLightSet:       newPointLightShaderSet,
 		SkyboxSet:           newSkyboxShaderSet,
 		SkycolorSet:         newSkycolorShaderSet,
 		ExposureSet:         newExposureShaderSet,
@@ -119,6 +126,15 @@ func newDirectionalLightShaderSet() graphics.ShaderSet {
 func newAmbientLightShaderSet() graphics.ShaderSet {
 	vsBuilder := internal.NewShaderSourceBuilder(ambientLightVertexShader)
 	fsBuilder := internal.NewShaderSourceBuilder(ambientLightFragmentShader)
+	return graphics.ShaderSet{
+		VertexShader:   vsBuilder.Build(),
+		FragmentShader: fsBuilder.Build(),
+	}
+}
+
+func newPointLightShaderSet() graphics.ShaderSet {
+	vsBuilder := internal.NewShaderSourceBuilder(pointLightVertexShader)
+	fsBuilder := internal.NewShaderSourceBuilder(pointLightFragmentShader)
 	return graphics.ShaderSet{
 		VertexShader:   vsBuilder.Build(),
 		FragmentShader: fsBuilder.Build(),
