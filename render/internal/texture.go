@@ -44,11 +44,14 @@ func NewDepthTexture2D(info render.DepthTexture2DInfo) *Texture {
 	if info.ClippedValue != nil {
 		wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_MIN_FILTER, wasmgl.LINEAR)
 		wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_MAG_FILTER, wasmgl.LINEAR)
-		wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_COMPARE_MODE, wasmgl.COMPARE_REF_TO_TEXTURE)
-		wasmgl.TexStorage2D(wasmgl.TEXTURE_2D, 1, wasmgl.DEPTH_COMPONENT32F, wasmgl.GLsizei(info.Width), wasmgl.GLsizei(info.Height))
 	} else {
 		wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_MIN_FILTER, wasmgl.NEAREST)
 		wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_MAG_FILTER, wasmgl.NEAREST)
+	}
+	if info.Comparable {
+		wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_COMPARE_MODE, wasmgl.COMPARE_REF_TO_TEXTURE)
+		wasmgl.TexStorage2D(wasmgl.TEXTURE_2D, 1, wasmgl.DEPTH_COMPONENT32F, wasmgl.GLsizei(info.Width), wasmgl.GLsizei(info.Height))
+	} else {
 		wasmgl.TexStorage2D(wasmgl.TEXTURE_2D, 1, wasmgl.DEPTH_COMPONENT24, wasmgl.GLsizei(info.Width), wasmgl.GLsizei(info.Height))
 	}
 
