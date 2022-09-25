@@ -51,9 +51,10 @@ func NewRenderer() *Renderer {
 
 type Renderer struct {
 	framebuffer           *Framebuffer
-	invalidateAttachments []int
-	topology              int
-	indexType             int
+	invalidateAttachments []wasmgl.GLenum
+	program               *Program
+	topology              wasmgl.GLenum
+	indexType             wasmgl.GLenum
 
 	isDirty       bool
 	isInvalidated bool
@@ -69,10 +70,10 @@ func (r *Renderer) BeginRenderPass(info render.RenderPassInfo) {
 
 	wasmgl.BindFramebuffer(wasmgl.FRAMEBUFFER, r.framebuffer.raw)
 	wasmgl.Viewport(
-		info.Viewport.X,
-		info.Viewport.Y,
-		info.Viewport.Width,
-		info.Viewport.Height,
+		wasmgl.GLint(info.Viewport.X),
+		wasmgl.GLint(info.Viewport.Y),
+		wasmgl.GLsizei(info.Viewport.Width),
+		wasmgl.GLsizei(info.Viewport.Height),
 	)
 
 	oldColorMask := r.actualState.ColorMask
@@ -87,7 +88,7 @@ func (r *Renderer) BeginRenderPass(info render.RenderPassInfo) {
 				r.validateColorMask(false)
 				colorMaskChanged = true
 			}
-			wasmgl.ClearBufferfv(wasmgl.COLOR, i, attachment.ClearValue[:])
+			wasmgl.ClearBufferfv(wasmgl.COLOR, wasmgl.GLint(i), attachment.ClearValue[:])
 		}
 	}
 	if colorMaskChanged {
@@ -145,7 +146,7 @@ func (r *Renderer) BeginRenderPass(info render.RenderPassInfo) {
 					r.invalidateAttachments = append(r.invalidateAttachments, wasmgl.COLOR)
 				}
 			} else {
-				r.invalidateAttachments = append(r.invalidateAttachments, wasmgl.COLOR_ATTACHMENT0+i)
+				r.invalidateAttachments = append(r.invalidateAttachments, wasmgl.COLOR_ATTACHMENT0+wasmgl.GLenum(i))
 			}
 		}
 	}
@@ -193,6 +194,7 @@ func (r *Renderer) EndRenderPass() {
 }
 
 func (r *Renderer) Invalidate() {
+	r.program = nil
 	r.isDirty = true
 	r.isInvalidated = true
 }
@@ -263,6 +265,22 @@ func (r *Renderer) UniformMatrix4f(location render.UniformLocation, values [16]f
 	})
 }
 
+func (r *Renderer) UniformBufferUnit(index int, buffer render.Buffer) {
+	r.executeCommandUniformBufferUnit(CommandUniformBufferUnit{
+		Index:    uint32(index),
+		BufferID: buffer.(*Buffer).id,
+	})
+}
+
+func (r *Renderer) UniformBufferUnitRange(index int, buffer render.Buffer, offset, size int) {
+	r.executeCommandUniformBufferUnitRange(CommandUniformBufferUnitRange{
+		Index:    uint32(index),
+		BufferID: buffer.(*Buffer).id,
+		Offset:   uint32(offset),
+		Size:     uint32(size),
+	})
+}
+
 func (r *Renderer) TextureUnit(index int, texture render.Texture) {
 	r.executeCommandTextureUnit(CommandTextureUnit{
 		Index:     uint32(index),
@@ -291,13 +309,13 @@ func (r *Renderer) CopyContentToTexture(info render.CopyContentToTextureInfo) {
 	wasmgl.BindTexture(intTexture.kind, intTexture.raw)
 	wasmgl.CopyTexSubImage2D(
 		intTexture.kind,
-		info.TextureLevel,
-		info.TextureX,
-		info.TextureY,
-		info.FramebufferX,
-		info.FramebufferY,
-		info.Width,
-		info.Height,
+		wasmgl.GLint(info.TextureLevel),
+		wasmgl.GLint(info.TextureX),
+		wasmgl.GLint(info.TextureY),
+		wasmgl.GLint(info.FramebufferX),
+		wasmgl.GLint(info.FramebufferY),
+		wasmgl.GLsizei(info.Width),
+		wasmgl.GLsizei(info.Height),
 	)
 	if info.GenerateMipmaps {
 		wasmgl.GenerateMipmap(intTexture.kind)
@@ -344,6 +362,12 @@ func (r *Renderer) SubmitQueue(queue *CommandQueue) {
 		case CommandKindUniformMatrix4f:
 			command := PopCommand[CommandUniformMatrix4f](queue)
 			r.executeCommandUniformMatrix4f(command)
+		case CommandKindUniformBufferUnit:
+			command := PopCommand[CommandUniformBufferUnit](queue)
+			r.executeCommandUniformBufferUnit(command)
+		case CommandKindUniformBufferUnitRange:
+			command := PopCommand[CommandUniformBufferUnitRange](queue)
+			r.executeCommandUniformBufferUnitRange(command)
 		case CommandKindTextureUnit:
 			command := PopCommand[CommandTextureUnit](queue)
 			r.executeCommandTextureUnit(command)
@@ -356,6 +380,10 @@ func (r *Renderer) SubmitQueue(queue *CommandQueue) {
 		case CommandKindCopyContentToBuffer:
 			command := PopCommand[CommandCopyContentToBuffer](queue)
 			r.executeCommandCopyContentToBuffer(command)
+		case CommandKindUpdateBufferData:
+			command := PopCommand[CommandUpdateBufferData](queue)
+			data := PopData(queue, command.Count)
+			r.executeCommandUpdateBufferData(command, data)
 		default:
 			panic(fmt.Errorf("unknown command kind: %v", header.Kind))
 		}
@@ -365,7 +393,10 @@ func (r *Renderer) SubmitQueue(queue *CommandQueue) {
 
 func (r *Renderer) executeCommandBindPipeline(command CommandBindPipeline) {
 	program := programs.Get(command.ProgramID)
-	wasmgl.UseProgram(program.raw)
+	if program != r.program {
+		r.program = program
+		wasmgl.UseProgram(program.raw)
+	}
 	r.executeCommandTopology(command.Topology)
 	r.executeCommandCullTest(command.CullTest)
 	r.executeCommandFrontFace(command.FrontFace)
@@ -395,19 +426,19 @@ func (r *Renderer) executeCommandBindPipeline(command CommandBindPipeline) {
 }
 
 func (r *Renderer) executeCommandTopology(command CommandTopology) {
-	r.topology = int(command.Topology)
+	r.topology = wasmgl.GLenum(command.Topology)
 }
 
 func (r *Renderer) executeCommandCullTest(command CommandCullTest) {
 	r.desiredState.CullTest = command.Enabled
 	if command.Enabled {
-		r.desiredState.CullFace = int(command.Face)
+		r.desiredState.CullFace = wasmgl.GLenum(command.Face)
 	}
 	r.isDirty = true
 }
 
 func (r *Renderer) executeCommandFrontFace(command CommandFrontFace) {
-	r.desiredState.FrontFace = int(command.Orientation)
+	r.desiredState.FrontFace = wasmgl.GLenum(command.Orientation)
 	r.isDirty = true
 }
 
@@ -422,7 +453,7 @@ func (r *Renderer) executeCommandDepthWrite(command CommandDepthWrite) {
 }
 
 func (r *Renderer) executeCommandDepthComparison(command CommandDepthComparison) {
-	r.desiredState.DepthComparison = int(command.Mode)
+	r.desiredState.DepthComparison = wasmgl.GLenum(command.Mode)
 	r.isDirty = true
 }
 
@@ -432,39 +463,39 @@ func (r *Renderer) executeCommandStencilTest(command CommandStencilTest) {
 }
 
 func (r *Renderer) executeCommandStencilOperation(command CommandStencilOperation) {
-	if int(command.Face) == wasmgl.FRONT || int(command.Face) == wasmgl.FRONT_AND_BACK {
-		r.desiredState.StencilOpStencilFailFront = int(command.StencilFail)
-		r.desiredState.StencilOpDepthFailFront = int(command.DepthFail)
-		r.desiredState.StencilOpPassFront = int(command.Pass)
+	if wasmgl.GLenum(command.Face) == wasmgl.FRONT || wasmgl.GLenum(command.Face) == wasmgl.FRONT_AND_BACK {
+		r.desiredState.StencilOpStencilFailFront = wasmgl.GLenum(command.StencilFail)
+		r.desiredState.StencilOpDepthFailFront = wasmgl.GLenum(command.DepthFail)
+		r.desiredState.StencilOpPassFront = wasmgl.GLenum(command.Pass)
 	}
-	if int(command.Face) == wasmgl.BACK || int(command.Face) == wasmgl.FRONT_AND_BACK {
-		r.desiredState.StencilOpStencilFailBack = int(command.StencilFail)
-		r.desiredState.StencilOpDepthFailBack = int(command.DepthFail)
-		r.desiredState.StencilOpPassBack = int(command.Pass)
+	if wasmgl.GLenum(command.Face) == wasmgl.BACK || wasmgl.GLenum(command.Face) == wasmgl.FRONT_AND_BACK {
+		r.desiredState.StencilOpStencilFailBack = wasmgl.GLenum(command.StencilFail)
+		r.desiredState.StencilOpDepthFailBack = wasmgl.GLenum(command.DepthFail)
+		r.desiredState.StencilOpPassBack = wasmgl.GLenum(command.Pass)
 	}
 	r.isDirty = true
 }
 
 func (r *Renderer) executeCommandStencilFunc(command CommandStencilFunc) {
-	if int(command.Face) == wasmgl.FRONT || int(command.Face) == wasmgl.FRONT_AND_BACK {
-		r.desiredState.StencilComparisonFuncFront = int(command.Func)
-		r.desiredState.StencilComparisonRefFront = int(command.Ref)
-		r.desiredState.StencilComparisonMaskFront = int(command.Mask)
+	if wasmgl.GLenum(command.Face) == wasmgl.FRONT || wasmgl.GLenum(command.Face) == wasmgl.FRONT_AND_BACK {
+		r.desiredState.StencilComparisonFuncFront = wasmgl.GLenum(command.Func)
+		r.desiredState.StencilComparisonRefFront = wasmgl.GLint(command.Ref)
+		r.desiredState.StencilComparisonMaskFront = wasmgl.GLuint(command.Mask)
 	}
-	if int(command.Face) == wasmgl.BACK || int(command.Face) == wasmgl.FRONT_AND_BACK {
-		r.desiredState.StencilComparisonFuncBack = int(command.Func)
-		r.desiredState.StencilComparisonRefBack = int(command.Ref)
-		r.desiredState.StencilComparisonMaskBack = int(command.Mask)
+	if wasmgl.GLenum(command.Face) == wasmgl.BACK || wasmgl.GLenum(command.Face) == wasmgl.FRONT_AND_BACK {
+		r.desiredState.StencilComparisonFuncBack = wasmgl.GLenum(command.Func)
+		r.desiredState.StencilComparisonRefBack = wasmgl.GLint(command.Ref)
+		r.desiredState.StencilComparisonMaskBack = wasmgl.GLuint(command.Mask)
 	}
 	r.isDirty = true
 }
 
 func (r *Renderer) executeCommandStencilMask(command CommandStencilMask) {
-	if int(command.Face) == wasmgl.FRONT || int(command.Face) == wasmgl.FRONT_AND_BACK {
-		r.desiredState.StencilMaskFront = int(command.Mask)
+	if wasmgl.GLenum(command.Face) == wasmgl.FRONT || wasmgl.GLenum(command.Face) == wasmgl.FRONT_AND_BACK {
+		r.desiredState.StencilMaskFront = wasmgl.GLuint(command.Mask)
 	}
-	if int(command.Face) == wasmgl.BACK || int(command.Face) == wasmgl.FRONT_AND_BACK {
-		r.desiredState.StencilMaskBack = int(command.Mask)
+	if wasmgl.GLenum(command.Face) == wasmgl.BACK || wasmgl.GLenum(command.Face) == wasmgl.FRONT_AND_BACK {
+		r.desiredState.StencilMaskBack = wasmgl.GLuint(command.Mask)
 	}
 	r.isDirty = true
 }
@@ -480,23 +511,23 @@ func (r *Renderer) executeCommandBlendColor(command CommandBlendColor) {
 }
 
 func (r *Renderer) executeCommandBlendEquation(command CommandBlendEquation) {
-	r.desiredState.BlendModeRGB = int(command.ModeRGB)
-	r.desiredState.BlendModeAlpha = int(command.ModeAlpha)
+	r.desiredState.BlendModeRGB = wasmgl.GLenum(command.ModeRGB)
+	r.desiredState.BlendModeAlpha = wasmgl.GLenum(command.ModeAlpha)
 	r.isDirty = true
 }
 
 func (r *Renderer) executeCommandBlendFunc(command CommandBlendFunc) {
-	r.desiredState.BlendSourceFactorRGB = int(command.SourceFactorRGB)
-	r.desiredState.BlendDestinationFactorRGB = int(command.DestinationFactorRGB)
-	r.desiredState.BlendSourceFactorAlpha = int(command.SourceFactorAlpha)
-	r.desiredState.BlendDestinationFactorAlpha = int(command.DestinationFactorAlpha)
+	r.desiredState.BlendSourceFactorRGB = wasmgl.GLenum(command.SourceFactorRGB)
+	r.desiredState.BlendDestinationFactorRGB = wasmgl.GLenum(command.DestinationFactorRGB)
+	r.desiredState.BlendSourceFactorAlpha = wasmgl.GLenum(command.SourceFactorAlpha)
+	r.desiredState.BlendDestinationFactorAlpha = wasmgl.GLenum(command.DestinationFactorAlpha)
 	r.isDirty = true
 }
 
 func (r *Renderer) executeCommandBindVertexArray(command CommandBindVertexArray) {
 	vertexArray := vertexArrays.Get(command.VertexArrayID)
 	wasmgl.BindVertexArray(vertexArray.raw)
-	r.indexType = int(command.IndexFormat)
+	r.indexType = wasmgl.GLenum(command.IndexFormat)
 }
 
 func (r *Renderer) executeCommandUniform1f(command CommandUniform1f) {
@@ -511,7 +542,7 @@ func (r *Renderer) executeCommandUniform1i(command CommandUniform1i) {
 	location := locations.Get(uint32(command.Location))
 	wasmgl.Uniform1i(
 		location.raw,
-		int(command.Value),
+		wasmgl.GLint(command.Value),
 	)
 }
 
@@ -545,9 +576,29 @@ func (r *Renderer) executeCommandUniformMatrix4f(command CommandUniformMatrix4f)
 	)
 }
 
+func (r *Renderer) executeCommandUniformBufferUnit(command CommandUniformBufferUnit) {
+	buffer := buffers.Get(command.BufferID)
+	wasmgl.BindBufferBase(
+		wasmgl.UNIFORM_BUFFER,
+		wasmgl.GLuint(command.Index),
+		buffer.raw,
+	)
+}
+
+func (r *Renderer) executeCommandUniformBufferUnitRange(command CommandUniformBufferUnitRange) {
+	buffer := buffers.Get(command.BufferID)
+	wasmgl.BindBufferRange(
+		wasmgl.UNIFORM_BUFFER,
+		wasmgl.GLuint(command.Index),
+		buffer.raw,
+		wasmgl.GLintptr(command.Offset),
+		wasmgl.GLsizeiptr(command.Size),
+	)
+}
+
 func (r *Renderer) executeCommandTextureUnit(command CommandTextureUnit) {
 	texture := textures.Get(command.TextureID)
-	wasmgl.ActiveTexture(wasmgl.TEXTURE0 + int(command.Index))
+	wasmgl.ActiveTexture(wasmgl.GLenum(wasmgl.TEXTURE0) + wasmgl.GLenum(command.Index))
 	wasmgl.BindTexture(texture.kind, texture.raw)
 }
 
@@ -555,9 +606,9 @@ func (r *Renderer) executeCommandDraw(command CommandDraw) {
 	r.validateState()
 	wasmgl.DrawArraysInstanced(
 		r.topology,
-		int(command.VertexOffset),
-		int(command.VertexCount),
-		int(command.InstanceCount),
+		wasmgl.GLint(command.VertexOffset),
+		wasmgl.GLsizei(command.VertexCount),
+		wasmgl.GLsizei(command.InstanceCount),
 	)
 }
 
@@ -565,10 +616,10 @@ func (r *Renderer) executeCommandDrawIndexed(command CommandDrawIndexed) {
 	r.validateState()
 	wasmgl.DrawElementsInstanced(
 		r.topology,
-		int(command.IndexCount),
+		wasmgl.GLsizei(command.IndexCount),
 		r.indexType,
-		int(command.IndexOffset),
-		int(command.InstanceCount),
+		wasmgl.GLintptr(command.IndexOffset),
+		wasmgl.GLsizei(command.InstanceCount),
 	)
 }
 
@@ -579,18 +630,25 @@ func (r *Renderer) executeCommandCopyContentToBuffer(command CommandCopyContentT
 		buffer.raw,
 	)
 	wasmgl.ReadPixels(
-		int(command.X),
-		int(command.Y),
-		int(command.Width),
-		int(command.Height),
-		int(command.Format),
-		int(command.XType),
-		int(command.BufferOffset),
+		wasmgl.GLint(command.X),
+		wasmgl.GLint(command.Y),
+		wasmgl.GLsizei(command.Width),
+		wasmgl.GLsizei(command.Height),
+		wasmgl.GLenum(command.Format),
+		wasmgl.GLenum(command.XType),
+		wasmgl.GLintptr(command.BufferOffset),
 	)
 	wasmgl.BindBuffer(
 		buffer.kind,
 		wasmgl.NilBuffer,
 	)
+}
+
+func (r *Renderer) executeCommandUpdateBufferData(command CommandUpdateBufferData, data []byte) {
+	buffer := buffers.Get(command.BufferID)
+	wasmgl.BindBuffer(buffer.kind, buffer.raw)
+	wasmgl.BufferSubData(buffer.kind, wasmgl.GLintptr(command.Offset), data)
+	wasmgl.BindBuffer(buffer.kind, buffer.raw)
 }
 
 func (r *Renderer) validateState() {

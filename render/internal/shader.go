@@ -54,7 +54,7 @@ func (s *Shader) compile() error {
 
 func (s *Shader) isCompileSuccessful() bool {
 	result := wasmgl.GetShaderParameter(s.raw, wasmgl.COMPILE_STATUS)
-	return result.Bool()
+	return result.GLboolean()
 }
 
 func (s *Shader) getInfoLog() string {

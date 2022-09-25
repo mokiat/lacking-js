@@ -73,6 +73,10 @@ func (a *API) CreatePixelTransferBuffer(info render.BufferInfo) render.Buffer {
 	return internal.NewPixelTransferBuffer(info)
 }
 
+func (a *API) CreateUniformBuffer(info render.BufferInfo) render.Buffer {
+	return internal.NewUniformBuffer(info)
+}
+
 func (a *API) CreateVertexArray(info render.VertexArrayInfo) render.VertexArray {
 	return internal.NewVertexArray(info)
 }
@@ -83,6 +87,10 @@ func (a *API) CreatePipeline(info render.PipelineInfo) render.Pipeline {
 
 func (a *API) CreateCommandQueue() render.CommandQueue {
 	return internal.NewCommandQueue()
+}
+
+func (a *API) DetermineContentFormat(framebuffer render.Framebuffer) render.DataFormat {
+	return internal.DetermineContentFormat(framebuffer)
 }
 
 func (a *API) BeginRenderPass(info render.RenderPassInfo) {
@@ -119,6 +127,14 @@ func (a *API) Uniform4f(location render.UniformLocation, values [4]float32) {
 
 func (a *API) UniformMatrix4f(location render.UniformLocation, values [16]float32) {
 	a.renderer.UniformMatrix4f(location, values)
+}
+
+func (a *API) UniformBufferUnit(index int, buffer render.Buffer) {
+	a.renderer.UniformBufferUnit(index, buffer)
+}
+
+func (a *API) UniformBufferUnitRange(index int, buffer render.Buffer, offset, size int) {
+	a.renderer.UniformBufferUnitRange(index, buffer, offset, size)
 }
 
 func (a *API) TextureUnit(index int, texture render.Texture) {

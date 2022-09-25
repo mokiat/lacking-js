@@ -1,41 +1,23 @@
-package game
-
-import (
-	"github.com/mokiat/lacking-js/internal"
-	"github.com/mokiat/lacking/game/graphics"
-)
-
-func newDirectionalLightShaderSet() graphics.ShaderSet {
-	vsBuilder := internal.NewShaderSourceBuilder(directionalLightVertexShader)
-	fsBuilder := internal.NewShaderSourceBuilder(directionalLightFragmentShader)
-	return graphics.ShaderSet{
-		VertexShader:   vsBuilder.Build,
-		FragmentShader: fsBuilder.Build,
-	}
-}
-
-const directionalLightVertexShader = `
-layout(location = 0) in vec3 coordIn;
-
-smooth out vec2 texCoordInOut;
-
-void main()
-{
-	texCoordInOut = (coordIn.xy + 1.0) / 2.0;
-	gl_Position = vec4(coordIn.xy, 0.0, 1.0);
-}
-`
-
-const directionalLightFragmentShader = `
 layout(location = 0) out vec4 fbColor0Out;
 
 uniform sampler2D fbColor0TextureIn;
 uniform sampler2D fbColor1TextureIn;
 uniform sampler2D fbDepthTextureIn;
-uniform mat4 projectionMatrixIn;
-uniform mat4 viewMatrixIn;
-uniform mat4 cameraMatrixIn;
-uniform vec3 lightDirectionIn;
+
+layout (std140) uniform Camera
+{
+	mat4 projectionMatrixIn;
+	mat4 viewMatrixIn;
+	mat4 cameraMatrixIn;
+};
+
+layout (std140) uniform Light
+{
+	mat4 lightProjectionMatrixIn;
+	mat4 lightViewMatrixIn;
+	mat4 lightMatrixIn;
+};
+
 uniform vec3 lightIntensityIn;
 
 smooth in vec2 texCoordInOut;
@@ -131,15 +113,19 @@ void main()
 	vec3 refractedColor = baseColor * (1.0 - metalness);
 	vec3 reflectedColor = mix(vec3(0.02), baseColor, metalness);
 
+	vec3 lightDiration = lightMatrixIn[3].xyz - worldPosition;
+
+	// float attenuation = 1.0; // TODO: 1.0/dot(lightDiration, lightDiration)
+	float attenuation = 1.0 / (1.0 + dot(lightDiration, lightDiration));
+
 	vec3 hdr = calculateDirectionalHDR(directionalSetup(
 		roughness,
 		reflectedColor,
 		refractedColor,
 		normalize(cameraPosition - worldPosition),
-		normalize(lightDirectionIn),
+		normalize(lightDiration),
 		normal,
 		lightIntensityIn
 	));
-	fbColor0Out = vec4(hdr, 1.0);
+	fbColor0Out = vec4(hdr * attenuation, 1.0);
 }
-`

@@ -11,10 +11,10 @@ func NewFramebuffer(info render.FramebufferInfo) *Framebuffer {
 	wasmgl.BindFramebuffer(wasmgl.FRAMEBUFFER, raw)
 
 	var activeDrawBuffers [4]bool
-	var drawBuffers []int
+	var drawBuffers []wasmgl.GLenum
 	for i, attachment := range info.ColorAttachments {
 		if colorAttachment, ok := attachment.(*Texture); ok {
-			attachmentID := wasmgl.COLOR_ATTACHMENT0 + int(i)
+			attachmentID := wasmgl.COLOR_ATTACHMENT0 + wasmgl.GLenum(i)
 			wasmgl.FramebufferTexture2D(wasmgl.FRAMEBUFFER, attachmentID, wasmgl.TEXTURE_2D, colorAttachment.raw, 0)
 			drawBuffers = append(drawBuffers, attachmentID)
 			activeDrawBuffers[i] = true
@@ -69,4 +69,31 @@ func (f *Framebuffer) Release() {
 	f.raw = wasmgl.NilFramebuffer
 	f.id = 0
 	f.activeDrawBuffers = [4]bool{}
+}
+
+func DetermineContentFormat(framebuffer render.Framebuffer) render.DataFormat {
+	fb := framebuffer.(*Framebuffer)
+	wasmgl.BindFramebuffer(wasmgl.FRAMEBUFFER, fb.raw)
+	defer func() {
+		wasmgl.BindFramebuffer(wasmgl.FRAMEBUFFER, wasmgl.NilFramebuffer)
+	}()
+	glFormat := wasmgl.GetParameter(
+		wasmgl.IMPLEMENTATION_COLOR_READ_FORMAT,
+	).GLenum()
+	if glFormat != wasmgl.RGBA {
+		return render.DataFormatUnsupported
+	}
+	glType := wasmgl.GetParameter(
+		wasmgl.IMPLEMENTATION_COLOR_READ_TYPE,
+	).GLenum()
+	switch glType {
+	case wasmgl.UNSIGNED_BYTE:
+		return render.DataFormatRGBA8
+	case wasmgl.HALF_FLOAT:
+		return render.DataFormatRGBA16F
+	case wasmgl.FLOAT:
+		return render.DataFormatRGBA32F
+	default:
+		return render.DataFormatUnsupported
+	}
 }
