@@ -1,6 +1,6 @@
 module github.com/mokiat/lacking-js
 
-go 1.18
+go 1.19
 
 require (
 	github.com/mokiat/lacking v0.8.0
