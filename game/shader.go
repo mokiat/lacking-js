@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"embed"
 	"fmt"
-	"html/template"
+	"text/template"
 
 	"github.com/mokiat/lacking-js/internal"
 	"github.com/mokiat/lacking/game/graphics"
@@ -40,6 +40,9 @@ func runTemplate(tmpl *template.Template, data any) string {
 var (
 	tmplSkycolorVertexShader   = find("skycolor.vert.glsl")
 	tmplSkycolorFragmentShader = find("skycolor.frag.glsl")
+
+	tmplExposureVertexShader   = find("exposure.vert.glsl")
+	tmplExposureFragmentShader = find("exposure.frag.glsl")
 )
 
 var (
@@ -84,12 +87,6 @@ var (
 
 	//go:embed shaders/debug.frag
 	debugFragmentShader string
-
-	//go:embed shaders/exposure.vert
-	exposureVertexShader string
-
-	//go:embed shaders/exposure.frag
-	exposureFragmentShader string
 
 	//go:embed shaders/postprocess.vert
 	tonePostprocessingVertexShader string
@@ -216,11 +213,9 @@ func newDebugShaderSet() graphics.ShaderSet {
 }
 
 func newExposureShaderSet() graphics.ShaderSet {
-	vsBuilder := internal.NewShaderSourceBuilder(exposureVertexShader)
-	fsBuilder := internal.NewShaderSourceBuilder(exposureFragmentShader)
 	return graphics.ShaderSet{
-		VertexShader:   vsBuilder.Build(),
-		FragmentShader: fsBuilder.Build(),
+		VertexShader:   runTemplate(tmplExposureVertexShader, struct{}{}),
+		FragmentShader: runTemplate(tmplExposureFragmentShader, struct{}{}),
 	}
 }
 
