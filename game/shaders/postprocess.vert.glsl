@@ -1,3 +1,5 @@
+/*template "version.glsl"*/
+
 layout(location = 0) in vec2 coordIn;
 
 smooth out vec2 texCoordInOut;

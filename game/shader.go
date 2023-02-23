@@ -43,6 +43,9 @@ var (
 
 	tmplExposureVertexShader   = find("exposure.vert.glsl")
 	tmplExposureFragmentShader = find("exposure.frag.glsl")
+
+	tmplPostprocessingVertexShader   = find("postprocess.vert.glsl")
+	tmplPostprocessingFragmentShader = find("postprocess.frag.glsl")
 )
 
 var (
@@ -87,12 +90,6 @@ var (
 
 	//go:embed shaders/debug.frag
 	debugFragmentShader string
-
-	//go:embed shaders/postprocess.vert
-	tonePostprocessingVertexShader string
-
-	//go:embed shaders/postprocess.frag
-	tonePostprocessingFragmentShader string
 )
 
 func NewShaderCollection() graphics.ShaderCollection {
@@ -220,18 +217,20 @@ func newExposureShaderSet() graphics.ShaderSet {
 }
 
 func newPostprocessingShaderSet(cfg graphics.PostprocessingShaderConfig) graphics.ShaderSet {
-	vsBuilder := internal.NewShaderSourceBuilder(tonePostprocessingVertexShader)
-	fsBuilder := internal.NewShaderSourceBuilder(tonePostprocessingFragmentShader)
+	var settings struct {
+		UseReinhard    bool
+		UseExponential bool
+	}
 	switch cfg.ToneMapping {
 	case graphics.ReinhardToneMapping:
-		fsBuilder.AddFeature("MODE_REINHARD")
+		settings.UseReinhard = true
 	case graphics.ExponentialToneMapping:
-		fsBuilder.AddFeature("MODE_EXPONENTIAL")
+		settings.UseExponential = true
 	default:
 		panic(fmt.Errorf("unknown tone mapping mode: %s", cfg.ToneMapping))
 	}
 	return graphics.ShaderSet{
-		VertexShader:   vsBuilder.Build(),
-		FragmentShader: fsBuilder.Build(),
+		VertexShader:   runTemplate(tmplPostprocessingVertexShader, settings),
+		FragmentShader: runTemplate(tmplPostprocessingFragmentShader, settings),
 	}
 }
