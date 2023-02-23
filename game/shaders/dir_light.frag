@@ -19,7 +19,6 @@ layout (std140) uniform Light
 	mat4 lightMatrixIn;
 };
 
-uniform vec3 lightDirectionIn;
 uniform vec3 lightIntensityIn;
 
 smooth in vec2 texCoordInOut;
@@ -122,18 +121,20 @@ void main()
 	vec3 refractedColor = baseColor * (1.0 - metalness);
 	vec3 reflectedColor = mix(vec3(0.02), baseColor, metalness);
 
+	vec3 lightDirection = normalize(lightMatrixIn[2].xyz);
+
 	vec3 hdr = calculateDirectionalHDR(directionalSetup(
 		roughness,
 		reflectedColor,
 		refractedColor,
 		normalize(cameraPosition - worldPosition),
-		normalize(lightDirectionIn),
+		lightDirection,
 		normal,
 		lightIntensityIn
 	));
 
 	vec4 lightPosition = lightProjectionMatrixIn * lightViewMatrixIn * vec4(worldPosition, 1.0);
-	float directness = clamp(dot(normal, normalize(lightDirectionIn)), 0.0, 1.0);
+	float directness = clamp(dot(normal, lightDirection), 0.0, 1.0);
 	lightPosition.xyz = lightPosition.xyz * 0.5 + 0.5;
 	lightPosition.z /= lightPosition.w;
 	lightPosition.z -= 0.0005;
@@ -154,7 +155,6 @@ void main()
 	float amount = 0.0;
 	for (int i = 0; i < 9; i++) {
 		highp vec3 texPos = lightPosition.xyz + shifts[i] * vec3(shift.x, shift.y, 1.0);
-		// float probability = texture(fbShadowTextureIn, texPos);
 		float probability = textureClampToBorder(fbShadowTextureIn, texPos, 1.0);
 		amount = max(amount, probability);
 	}

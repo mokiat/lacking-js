@@ -179,6 +179,10 @@ func (l *loop) GamepadState(index int) (app.GamepadState, bool) {
 	}, true
 }
 
+func (l *loop) JoystickState(index int) (app.JoystickState, bool) {
+	return app.JoystickState{}, false // TODO
+}
+
 func (l *loop) Schedule(fn func() error) {
 	select {
 	case l.tasks <- fn:

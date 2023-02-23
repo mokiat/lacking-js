@@ -18,11 +18,16 @@ smooth in vec3 normalInOut;
 #if defined(USES_TEX_COORD0)
 smooth in vec2 texCoordInOut;
 #endif
+#if defined(USES_COLOR0)
+smooth in vec4 colorInOut;
+#endif
 
 void main()
 {
 #if defined(USES_ALBEDO_TEXTURE) && defined(USES_TEX_COORD0)
 	vec4 color = texture(albedoTwoDTextureIn, texCoordInOut);
+#elif defined(USES_COLOR0)
+	vec4 color = colorInOut;
 #else
 	vec4 color = albedoColorIn;
 #endif

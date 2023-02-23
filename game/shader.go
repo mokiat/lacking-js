@@ -1,11 +1,45 @@
 package game
 
 import (
-	_ "embed"
+	"bytes"
+	"embed"
 	"fmt"
+	"html/template"
 
 	"github.com/mokiat/lacking-js/internal"
 	"github.com/mokiat/lacking/game/graphics"
+)
+
+//go:embed shaders/*
+var sources embed.FS
+
+var rootTemplate = template.Must(template.
+	New("root").
+	Delims("/*", "*/").
+	ParseFS(sources, "shaders/*.glsl"),
+)
+
+func find(name string) *template.Template {
+	result := rootTemplate.Lookup(name)
+	if result == nil {
+		panic(fmt.Errorf("template %q not found", name))
+	}
+	return result
+}
+
+var buffer = new(bytes.Buffer)
+
+func runTemplate(tmpl *template.Template, data any) string {
+	buffer.Reset()
+	if err := tmpl.Execute(buffer, data); err != nil {
+		panic(fmt.Errorf("template exec error: %w", err))
+	}
+	return buffer.String()
+}
+
+var (
+	tmplSkycolorVertexShader   = find("skycolor.vert.glsl")
+	tmplSkycolorFragmentShader = find("skycolor.frag.glsl")
 )
 
 var (
@@ -45,11 +79,11 @@ var (
 	//go:embed shaders/skybox.frag
 	cubeSkyboxFragmentShader string
 
-	//go:embed shaders/skycolor.vert
-	colorSkyboxVertexShader string
+	//go:embed shaders/debug.vert
+	debugVertexShader string
 
-	//go:embed shaders/skycolor.frag
-	colorSkyboxFragmentShader string
+	//go:embed shaders/debug.frag
+	debugFragmentShader string
 
 	//go:embed shaders/exposure.vert
 	exposureVertexShader string
@@ -71,8 +105,10 @@ func NewShaderCollection() graphics.ShaderCollection {
 		DirectionalLightSet: newDirectionalLightShaderSet,
 		AmbientLightSet:     newAmbientLightShaderSet,
 		PointLightSet:       newPointLightShaderSet,
+		SpotLightSet:        newSpotLightShaderSet,
 		SkyboxSet:           newSkyboxShaderSet,
 		SkycolorSet:         newSkycolorShaderSet,
+		DebugSet:            newDebugShaderSet,
 		ExposureSet:         newExposureShaderSet,
 		PostprocessingSet:   newPostprocessingShaderSet,
 	}
@@ -101,6 +137,10 @@ func newPBRGeometrySet(cfg graphics.PBRGeometryShaderConfig) graphics.ShaderSet 
 	if cfg.HasAlphaTesting {
 		vsBuilder.AddFeature("USES_ALPHA_TEST")
 		fsBuilder.AddFeature("USES_ALPHA_TEST")
+	}
+	if cfg.HasVertexColors {
+		vsBuilder.AddFeature("USES_COLOR0")
+		fsBuilder.AddFeature("USES_COLOR0")
 	}
 	if cfg.HasAlbedoTexture {
 		vsBuilder.AddFeature("USES_ALBEDO_TEXTURE")
@@ -141,6 +181,15 @@ func newPointLightShaderSet() graphics.ShaderSet {
 	}
 }
 
+func newSpotLightShaderSet() graphics.ShaderSet {
+	vsBuilder := internal.NewShaderSourceBuilder(pointLightVertexShader)
+	fsBuilder := internal.NewShaderSourceBuilder(pointLightFragmentShader)
+	return graphics.ShaderSet{
+		VertexShader:   vsBuilder.Build(),
+		FragmentShader: fsBuilder.Build(),
+	}
+}
+
 func newSkyboxShaderSet() graphics.ShaderSet {
 	vsBuilder := internal.NewShaderSourceBuilder(cubeSkyboxVertexShader)
 	fsBuilder := internal.NewShaderSourceBuilder(cubeSkyboxFragmentShader)
@@ -151,8 +200,15 @@ func newSkyboxShaderSet() graphics.ShaderSet {
 }
 
 func newSkycolorShaderSet() graphics.ShaderSet {
-	vsBuilder := internal.NewShaderSourceBuilder(colorSkyboxVertexShader)
-	fsBuilder := internal.NewShaderSourceBuilder(colorSkyboxFragmentShader)
+	return graphics.ShaderSet{
+		VertexShader:   runTemplate(tmplSkycolorVertexShader, struct{}{}),
+		FragmentShader: runTemplate(tmplSkycolorFragmentShader, struct{}{}),
+	}
+}
+
+func newDebugShaderSet() graphics.ShaderSet {
+	vsBuilder := internal.NewShaderSourceBuilder(debugVertexShader)
+	fsBuilder := internal.NewShaderSourceBuilder(debugFragmentShader)
 	return graphics.ShaderSet{
 		VertexShader:   vsBuilder.Build(),
 		FragmentShader: fsBuilder.Build(),

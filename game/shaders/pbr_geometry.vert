@@ -3,6 +3,9 @@ layout(location = 1) in vec3 normalIn;
 #if defined(USES_TEX_COORD0)
 layout(location = 3) in vec2 texCoordIn;
 #endif
+#if defined(USES_COLOR0)
+layout(location = 4) in vec4 colorIn;
+#endif
 #if defined(USES_BONES)
 layout(location = 5) in vec4 weightsIn;
 layout(location = 6) in uvec4 jointsIn;
@@ -31,11 +34,17 @@ smooth out vec3 normalInOut;
 #if defined(USES_TEX_COORD0)
 smooth out vec2 texCoordInOut;
 #endif
+#if defined(USES_COLOR0)
+smooth out vec4 colorInOut;
+#endif
 
 void main()
 {
 #if defined(USES_TEX_COORD0)
 	texCoordInOut = texCoordIn;
+#endif
+#if defined(USES_COLOR0)
+	colorInOut = colorIn;
 #endif
 #if defined(USES_BONES)
 	mat4 modelMatrixA = boneMatrixIn[jointsIn.x];
