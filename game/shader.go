@@ -41,6 +41,9 @@ var (
 	tmplSkycolorVertexShader   = find("skycolor.vert.glsl")
 	tmplSkycolorFragmentShader = find("skycolor.frag.glsl")
 
+	tmplDebugVertexShader   = find("debug.vert.glsl")
+	tmplDebugFragmentShader = find("debug.frag.glsl")
+
 	tmplExposureVertexShader   = find("exposure.vert.glsl")
 	tmplExposureFragmentShader = find("exposure.frag.glsl")
 
@@ -84,12 +87,6 @@ var (
 
 	//go:embed shaders/skybox.frag
 	cubeSkyboxFragmentShader string
-
-	//go:embed shaders/debug.vert
-	debugVertexShader string
-
-	//go:embed shaders/debug.frag
-	debugFragmentShader string
 )
 
 func NewShaderCollection() graphics.ShaderCollection {
@@ -201,11 +198,9 @@ func newSkycolorShaderSet() graphics.ShaderSet {
 }
 
 func newDebugShaderSet() graphics.ShaderSet {
-	vsBuilder := internal.NewShaderSourceBuilder(debugVertexShader)
-	fsBuilder := internal.NewShaderSourceBuilder(debugFragmentShader)
 	return graphics.ShaderSet{
-		VertexShader:   vsBuilder.Build(),
-		FragmentShader: fsBuilder.Build(),
+		VertexShader:   runTemplate(tmplDebugVertexShader, struct{}{}),
+		FragmentShader: runTemplate(tmplDebugFragmentShader, struct{}{}),
 	}
 }
 
