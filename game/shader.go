@@ -38,6 +38,9 @@ func runTemplate(tmpl *template.Template, data any) string {
 }
 
 var (
+	tmplShadowMappingVertexShader   = find("shadow.vert.glsl")
+	tmplShadowMappingFragmentShader = find("shadow.frag.glsl")
+
 	tmplPBRGeometryVertexShader   = find("pbr_geometry.vert.glsl")
 	tmplPBRGeometryFragmentShader = find("pbr_geometry.frag.glsl")
 
@@ -75,12 +78,6 @@ var (
 
 	//go:embed shaders/point_light.frag
 	pointLightFragmentShader string
-
-	//go:embed shaders/shadow.vert
-	shadowMappingVertexShader string
-
-	//go:embed shaders/shadow.frag
-	shadowMappingFragmentShader string
 )
 
 func NewShaderCollection() graphics.ShaderCollection {
@@ -100,15 +97,15 @@ func NewShaderCollection() graphics.ShaderCollection {
 }
 
 func newShadowMappingSet(cfg graphics.ShadowMappingShaderConfig) graphics.ShaderSet {
-	vsBuilder := internal.NewShaderSourceBuilder(shadowMappingVertexShader)
-	fsBuilder := internal.NewShaderSourceBuilder(shadowMappingFragmentShader)
+	var settings struct {
+		UseArmature bool
+	}
 	if cfg.HasArmature {
-		vsBuilder.AddFeature("USES_BONES")
-		fsBuilder.AddFeature("USES_BONES")
+		settings.UseArmature = true
 	}
 	return graphics.ShaderSet{
-		VertexShader:   vsBuilder.Build(),
-		FragmentShader: fsBuilder.Build(),
+		VertexShader:   runTemplate(tmplShadowMappingVertexShader, settings),
+		FragmentShader: runTemplate(tmplShadowMappingFragmentShader, settings),
 	}
 }
 
