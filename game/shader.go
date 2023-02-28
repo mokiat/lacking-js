@@ -50,6 +50,9 @@ var (
 	tmplSpotLightVertexShader   = find("spot_light.vert.glsl")
 	tmplSpotLightFragmentShader = find("spot_light.frag.glsl")
 
+	tmplDirectionalLightVertexShader   = find("directional_light.vert.glsl")
+	tmplDirectionalLightFragmentShader = find("directional_light.frag.glsl")
+
 	tmplSkyboxVertexShader   = find("skybox.vert.glsl")
 	tmplSkyboxFragmentShader = find("skybox.frag.glsl")
 
@@ -67,12 +70,6 @@ var (
 )
 
 var (
-	//go:embed shaders/dir_light.vert
-	directionalLightVertexShader string
-
-	//go:embed shaders/dir_light.frag
-	directionalLightFragmentShader string
-
 	//go:embed shaders/amb_light.vert
 	ambientLightVertexShader string
 
@@ -137,11 +134,13 @@ func newPBRGeometrySet(cfg graphics.PBRGeometryShaderConfig) graphics.ShaderSet 
 }
 
 func newDirectionalLightShaderSet() graphics.ShaderSet {
-	vsBuilder := internal.NewShaderSourceBuilder(directionalLightVertexShader)
-	fsBuilder := internal.NewShaderSourceBuilder(directionalLightFragmentShader)
+	var settings struct {
+		UseShadowMapping bool
+	}
+	settings.UseShadowMapping = true // TODO
 	return graphics.ShaderSet{
-		VertexShader:   vsBuilder.Build(),
-		FragmentShader: fsBuilder.Build(),
+		VertexShader:   runTemplate(tmplDirectionalLightVertexShader, settings),
+		FragmentShader: runTemplate(tmplDirectionalLightFragmentShader, settings),
 	}
 }
 
