@@ -38,6 +38,9 @@ func runTemplate(tmpl *template.Template, data any) string {
 }
 
 var (
+	tmplPBRGeometryVertexShader   = find("pbr_geometry.vert.glsl")
+	tmplPBRGeometryFragmentShader = find("pbr_geometry.frag.glsl")
+
 	tmplSkyboxVertexShader   = find("skybox.vert.glsl")
 	tmplSkyboxFragmentShader = find("skybox.frag.glsl")
 
@@ -55,12 +58,6 @@ var (
 )
 
 var (
-	//go:embed shaders/pbr_geometry.vert
-	pbrGeometryVertexShader string
-
-	//go:embed shaders/pbr_geometry.frag
-	pbrGeometryFragmentShader string
-
 	//go:embed shaders/dir_light.vert
 	directionalLightVertexShader string
 
@@ -116,29 +113,29 @@ func newShadowMappingSet(cfg graphics.ShadowMappingShaderConfig) graphics.Shader
 }
 
 func newPBRGeometrySet(cfg graphics.PBRGeometryShaderConfig) graphics.ShaderSet {
-	vsBuilder := internal.NewShaderSourceBuilder(pbrGeometryVertexShader)
-	fsBuilder := internal.NewShaderSourceBuilder(pbrGeometryFragmentShader)
+	var settings struct {
+		UseArmature       bool
+		UseAlphaTest      bool
+		UseVertexColoring bool
+		UseTexturing      bool
+		UseAlbedoTexture  bool
+	}
 	if cfg.HasArmature {
-		vsBuilder.AddFeature("USES_BONES")
-		fsBuilder.AddFeature("USES_BONES")
+		settings.UseArmature = true
 	}
 	if cfg.HasAlphaTesting {
-		vsBuilder.AddFeature("USES_ALPHA_TEST")
-		fsBuilder.AddFeature("USES_ALPHA_TEST")
+		settings.UseAlphaTest = true
 	}
 	if cfg.HasVertexColors {
-		vsBuilder.AddFeature("USES_COLOR0")
-		fsBuilder.AddFeature("USES_COLOR0")
+		settings.UseVertexColoring = true
 	}
 	if cfg.HasAlbedoTexture {
-		vsBuilder.AddFeature("USES_ALBEDO_TEXTURE")
-		fsBuilder.AddFeature("USES_ALBEDO_TEXTURE")
-		vsBuilder.AddFeature("USES_TEX_COORD0")
-		fsBuilder.AddFeature("USES_TEX_COORD0")
+		settings.UseTexturing = true
+		settings.UseAlbedoTexture = true
 	}
 	return graphics.ShaderSet{
-		VertexShader:   vsBuilder.Build(),
-		FragmentShader: fsBuilder.Build(),
+		VertexShader:   runTemplate(tmplPBRGeometryVertexShader, settings),
+		FragmentShader: runTemplate(tmplPBRGeometryFragmentShader, settings),
 	}
 }
 
