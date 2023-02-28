@@ -38,6 +38,9 @@ func runTemplate(tmpl *template.Template, data any) string {
 }
 
 var (
+	tmplSkyboxVertexShader   = find("skybox.vert.glsl")
+	tmplSkyboxFragmentShader = find("skybox.frag.glsl")
+
 	tmplSkycolorVertexShader   = find("skycolor.vert.glsl")
 	tmplSkycolorFragmentShader = find("skycolor.frag.glsl")
 
@@ -81,12 +84,6 @@ var (
 
 	//go:embed shaders/shadow.frag
 	shadowMappingFragmentShader string
-
-	//go:embed shaders/skybox.vert
-	cubeSkyboxVertexShader string
-
-	//go:embed shaders/skybox.frag
-	cubeSkyboxFragmentShader string
 )
 
 func NewShaderCollection() graphics.ShaderCollection {
@@ -182,11 +179,9 @@ func newSpotLightShaderSet() graphics.ShaderSet {
 }
 
 func newSkyboxShaderSet() graphics.ShaderSet {
-	vsBuilder := internal.NewShaderSourceBuilder(cubeSkyboxVertexShader)
-	fsBuilder := internal.NewShaderSourceBuilder(cubeSkyboxFragmentShader)
 	return graphics.ShaderSet{
-		VertexShader:   vsBuilder.Build(),
-		FragmentShader: fsBuilder.Build(),
+		VertexShader:   runTemplate(tmplSkyboxVertexShader, struct{}{}),
+		FragmentShader: runTemplate(tmplSkyboxFragmentShader, struct{}{}),
 	}
 }
 
