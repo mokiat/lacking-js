@@ -44,6 +44,9 @@ var (
 	tmplPBRGeometryVertexShader   = find("pbr_geometry.vert.glsl")
 	tmplPBRGeometryFragmentShader = find("pbr_geometry.frag.glsl")
 
+	tmplPointLightVertexShader   = find("point_light.vert.glsl")
+	tmplPointLightFragmentShader = find("point_light.frag.glsl")
+
 	tmplSkyboxVertexShader   = find("skybox.vert.glsl")
 	tmplSkyboxFragmentShader = find("skybox.frag.glsl")
 
@@ -72,12 +75,6 @@ var (
 
 	//go:embed shaders/amb_light.frag
 	ambientLightFragmentShader string
-
-	//go:embed shaders/point_light.vert
-	pointLightVertexShader string
-
-	//go:embed shaders/point_light.frag
-	pointLightFragmentShader string
 )
 
 func NewShaderCollection() graphics.ShaderCollection {
@@ -155,20 +152,16 @@ func newAmbientLightShaderSet() graphics.ShaderSet {
 }
 
 func newPointLightShaderSet() graphics.ShaderSet {
-	vsBuilder := internal.NewShaderSourceBuilder(pointLightVertexShader)
-	fsBuilder := internal.NewShaderSourceBuilder(pointLightFragmentShader)
 	return graphics.ShaderSet{
-		VertexShader:   vsBuilder.Build(),
-		FragmentShader: fsBuilder.Build(),
+		VertexShader:   runTemplate(tmplPointLightVertexShader, struct{}{}),
+		FragmentShader: runTemplate(tmplPointLightFragmentShader, struct{}{}),
 	}
 }
 
 func newSpotLightShaderSet() graphics.ShaderSet {
-	vsBuilder := internal.NewShaderSourceBuilder(pointLightVertexShader)
-	fsBuilder := internal.NewShaderSourceBuilder(pointLightFragmentShader)
 	return graphics.ShaderSet{
-		VertexShader:   vsBuilder.Build(),
-		FragmentShader: fsBuilder.Build(),
+		VertexShader:   runTemplate(tmplPointLightVertexShader, struct{}{}),
+		FragmentShader: runTemplate(tmplPointLightFragmentShader, struct{}{}),
 	}
 }
 
