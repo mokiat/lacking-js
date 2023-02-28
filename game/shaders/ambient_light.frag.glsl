@@ -1,3 +1,6 @@
+/*template "version.glsl"*/
+/*template "precision.glsl"*/
+
 layout(location = 0) out vec4 fbColor0Out;
 
 uniform sampler2D fbColor0TextureIn;
@@ -6,39 +9,28 @@ uniform sampler2D fbDepthTextureIn;
 uniform samplerCube reflectionTextureIn;
 uniform samplerCube refractionTextureIn;
 
-layout (std140) uniform Camera
+/*template "ubo_camera.glsl"*/
+
+/*template "math.glsl"*/
+
+/*template "lighting.glsl"*/
+
+struct ambientFresnelInput
 {
-	mat4 projectionMatrixIn;
-	mat4 viewMatrixIn;
-	mat4 cameraMatrixIn;
-};
-
-smooth in vec2 texCoordInOut;
-
-const float pi = 3.141592;
-
-struct ambientFresnelInput {
 	vec3 reflectanceF0;
 	vec3 normal;
 	vec3 viewDirection;
 	float roughness;
 };
 
-vec3 calculateAmbientFresnel(ambientFresnelInput i) {
+vec3 calculateAmbientFresnel(ambientFresnelInput i)
+{
 	float normViewDot = clamp(dot(i.normal, i.viewDirection), 0.0, 1.0);
 	return i.reflectanceF0 + (max(vec3(1.0 - i.roughness), i.reflectanceF0) - i.reflectanceF0) * pow(1.0 - normViewDot, 5.0);
 }
 
-struct geometryInput {
-	float roughness;
-};
-
-float calculateGeometry(geometryInput i) {
-	// TODO: Use better model
-	return 1.0 / 4.0;
-}
-
-struct ambientSetup {
+struct ambientSetup
+{
 	float roughness;
 	vec3 reflectedColor;
 	vec3 refractedColor;
@@ -46,7 +38,8 @@ struct ambientSetup {
 	vec3 normal;
 };
 
-vec3 calculateAmbientHDR(ambientSetup s) {
+vec3 calculateAmbientHDR(ambientSetup s)
+{
 	vec3 fresnel = calculateAmbientFresnel(ambientFresnelInput(
 		s.reflectedColor,
 		s.normal,
@@ -59,7 +52,7 @@ vec3 calculateAmbientHDR(ambientSetup s) {
 			pow(texture(refractionTextureIn, lightDirection) / pi, vec4(0.25)),
 			pow(texture(reflectionTextureIn, lightDirection), vec4(0.25)),
 			pow(1.0 - s.roughness, 4.0)
-		), vec4(4)).xyz;
+		), vec4(4.0)).xyz;
 	float geometry = calculateGeometry(geometryInput(
 		s.roughness
 	));
@@ -73,22 +66,14 @@ vec3 calculateAmbientHDR(ambientSetup s) {
 
 void main()
 {
-	vec3 ndcPosition = vec3(
-		(texCoordInOut.x - 0.5) * 2.0,
-		(texCoordInOut.y - 0.5) * 2.0,
-		texture(fbDepthTextureIn, texCoordInOut).x * 2.0 - 1.0
-	);
-	vec3 clipPosition = vec3(
-		ndcPosition.x / projectionMatrixIn[0][0],
-		ndcPosition.y / projectionMatrixIn[1][1],
-		-1.0
-	);
-	vec3 viewPosition = clipPosition * projectionMatrixIn[3][2] / (projectionMatrixIn[2][2] + ndcPosition.z);
-	vec3 worldPosition = (cameraMatrixIn * vec4(viewPosition, 1.0)).xyz;
+	vec2 screenCoord = getScreenUVCoords(viewportIn);
+	vec3 ndcPosition = getScreenNDC(screenCoord, fbDepthTextureIn);
+	vec3 viewPosition = getViewCoords(ndcPosition, projectionMatrixIn);
+	vec3 worldPosition = getWorldCoords(viewPosition, cameraMatrixIn);
 	vec3 cameraPosition = cameraMatrixIn[3].xyz;
 
-	vec4 albedoMetalness = texture(fbColor0TextureIn, texCoordInOut);
-	vec4 normalRoughness = texture(fbColor1TextureIn, texCoordInOut);
+	vec4 albedoMetalness = texture(fbColor0TextureIn, screenCoord);
+	vec4 normalRoughness = texture(fbColor1TextureIn, screenCoord);
 	vec3 baseColor = albedoMetalness.xyz;
 	vec3 normal = normalize(normalRoughness.xyz);
 	float metalness = albedoMetalness.w;

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"text/template"
 
-	"github.com/mokiat/lacking-js/internal"
 	"github.com/mokiat/lacking/game/graphics"
 )
 
@@ -44,6 +43,9 @@ var (
 	tmplPBRGeometryVertexShader   = find("pbr_geometry.vert.glsl")
 	tmplPBRGeometryFragmentShader = find("pbr_geometry.frag.glsl")
 
+	tmplAmbientLightVertexShader   = find("ambient_light.vert.glsl")
+	tmplAmbientLightFragmentShader = find("ambient_light.frag.glsl")
+
 	tmplPointLightVertexShader   = find("point_light.vert.glsl")
 	tmplPointLightFragmentShader = find("point_light.frag.glsl")
 
@@ -67,14 +69,6 @@ var (
 
 	tmplPostprocessingVertexShader   = find("postprocess.vert.glsl")
 	tmplPostprocessingFragmentShader = find("postprocess.frag.glsl")
-)
-
-var (
-	//go:embed shaders/amb_light.vert
-	ambientLightVertexShader string
-
-	//go:embed shaders/amb_light.frag
-	ambientLightFragmentShader string
 )
 
 func NewShaderCollection() graphics.ShaderCollection {
@@ -145,11 +139,9 @@ func newDirectionalLightShaderSet() graphics.ShaderSet {
 }
 
 func newAmbientLightShaderSet() graphics.ShaderSet {
-	vsBuilder := internal.NewShaderSourceBuilder(ambientLightVertexShader)
-	fsBuilder := internal.NewShaderSourceBuilder(ambientLightFragmentShader)
 	return graphics.ShaderSet{
-		VertexShader:   vsBuilder.Build(),
-		FragmentShader: fsBuilder.Build(),
+		VertexShader:   runTemplate(tmplAmbientLightVertexShader, struct{}{}),
+		FragmentShader: runTemplate(tmplAmbientLightFragmentShader, struct{}{}),
 	}
 }
 
