@@ -47,6 +47,9 @@ var (
 	tmplPointLightVertexShader   = find("point_light.vert.glsl")
 	tmplPointLightFragmentShader = find("point_light.frag.glsl")
 
+	tmplSpotLightVertexShader   = find("spot_light.vert.glsl")
+	tmplSpotLightFragmentShader = find("spot_light.frag.glsl")
+
 	tmplSkyboxVertexShader   = find("skybox.vert.glsl")
 	tmplSkyboxFragmentShader = find("skybox.frag.glsl")
 
@@ -160,8 +163,8 @@ func newPointLightShaderSet() graphics.ShaderSet {
 
 func newSpotLightShaderSet() graphics.ShaderSet {
 	return graphics.ShaderSet{
-		VertexShader:   runTemplate(tmplPointLightVertexShader, struct{}{}),
-		FragmentShader: runTemplate(tmplPointLightFragmentShader, struct{}{}),
+		VertexShader:   runTemplate(tmplSpotLightVertexShader, struct{}{}),
+		FragmentShader: runTemplate(tmplSpotLightFragmentShader, struct{}{}),
 	}
 }
 
