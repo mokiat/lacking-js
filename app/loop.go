@@ -339,7 +339,7 @@ func (l *loop) onJSMouseWheel(this js.Value, args []js.Value) interface{} {
 		X:       int(event.Get("offsetX").Float()),
 		Y:       int(event.Get("offsetY").Float()),
 		Type:    app.MouseEventTypeScroll,
-		ScrollX: event.Get("deltaX").Float(),
-		ScrollY: event.Get("deltaY").Float(),
+		ScrollX: event.Get("deltaX").Float() / 100.0,
+		ScrollY: -event.Get("deltaY").Float() / 100.0,
 	})
 }
