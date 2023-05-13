@@ -1,37 +1,38 @@
+/*template "version.glsl"*/
+/*template "precision.glsl"*/
+
 layout(location = 0) out vec4 fbColor0Out;
 layout(location = 1) out vec4 fbColor1Out;
 
-#if defined(USES_ALBEDO_TEXTURE)
+/*if .UseAlbedoTexture*/
 uniform sampler2D albedoTwoDTextureIn;
-#endif
+/*end*/
 
-layout (std140) uniform Material
-{
-	vec4 albedoColorIn;
-	float alphaThresholdIn;
-	float normalScaleIn;
-	float metallicIn;
-	float roughnessIn;
-};
+/*template "ubo_material.glsl"*/
 
 smooth in vec3 normalInOut;
-#if defined(USES_TEX_COORD0)
+/*if .UseTexturing*/
 smooth in vec2 texCoordInOut;
-#endif
+/*end*/
+/*if .UseVertexColoring*/
+smooth in vec4 colorInOut;
+/*end*/
 
 void main()
 {
-#if defined(USES_ALBEDO_TEXTURE) && defined(USES_TEX_COORD0)
+	/*if .UseAlbedoTexture*/
 	vec4 color = texture(albedoTwoDTextureIn, texCoordInOut);
-#else
+	/*else if .UseVertexColoring*/
+	vec4 color = colorInOut;
+	/*else*/
 	vec4 color = albedoColorIn;
-#endif
+	/*end*/
 
-#if defined(USES_ALPHA_TEST)
+	/*if .UseAlphaTest*/
 	if (color.a < alphaThresholdIn) {
 		discard;
 	}
-#endif
+	/*end*/
 
 	fbColor0Out = vec4(color.xyz, metallicIn);
 	fbColor1Out = vec4(normalize(normalInOut), roughnessIn);

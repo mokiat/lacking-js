@@ -648,7 +648,7 @@ func (r *Renderer) executeCommandUpdateBufferData(command CommandUpdateBufferDat
 	buffer := buffers.Get(command.BufferID)
 	wasmgl.BindBuffer(buffer.kind, buffer.raw)
 	wasmgl.BufferSubData(buffer.kind, wasmgl.GLintptr(command.Offset), data)
-	wasmgl.BindBuffer(buffer.kind, buffer.raw)
+	wasmgl.BindBuffer(buffer.kind, wasmgl.NilBuffer)
 }
 
 func (r *Renderer) validateState() {
@@ -668,6 +668,7 @@ func (r *Renderer) validateState() {
 		r.validateBlending(forcedUpdate)
 		r.validateBlendEquation(forcedUpdate)
 		r.validateBlendFunc(forcedUpdate)
+		r.validateBlendColor(forcedUpdate)
 	}
 	r.isDirty = false
 	r.isInvalidated = false

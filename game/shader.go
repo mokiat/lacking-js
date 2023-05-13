@@ -1,67 +1,10 @@
 package game
 
 import (
-	_ "embed"
 	"fmt"
 
-	"github.com/mokiat/lacking-js/internal"
+	"github.com/mokiat/lacking-js/shader"
 	"github.com/mokiat/lacking/game/graphics"
-)
-
-var (
-	//go:embed shaders/pbr_geometry.vert
-	pbrGeometryVertexShader string
-
-	//go:embed shaders/pbr_geometry.frag
-	pbrGeometryFragmentShader string
-
-	//go:embed shaders/dir_light.vert
-	directionalLightVertexShader string
-
-	//go:embed shaders/dir_light.frag
-	directionalLightFragmentShader string
-
-	//go:embed shaders/amb_light.vert
-	ambientLightVertexShader string
-
-	//go:embed shaders/amb_light.frag
-	ambientLightFragmentShader string
-
-	//go:embed shaders/point_light.vert
-	pointLightVertexShader string
-
-	//go:embed shaders/point_light.frag
-	pointLightFragmentShader string
-
-	//go:embed shaders/shadow.vert
-	shadowMappingVertexShader string
-
-	//go:embed shaders/shadow.frag
-	shadowMappingFragmentShader string
-
-	//go:embed shaders/skybox.vert
-	cubeSkyboxVertexShader string
-
-	//go:embed shaders/skybox.frag
-	cubeSkyboxFragmentShader string
-
-	//go:embed shaders/skycolor.vert
-	colorSkyboxVertexShader string
-
-	//go:embed shaders/skycolor.frag
-	colorSkyboxFragmentShader string
-
-	//go:embed shaders/exposure.vert
-	exposureVertexShader string
-
-	//go:embed shaders/exposure.frag
-	exposureFragmentShader string
-
-	//go:embed shaders/postprocess.vert
-	tonePostprocessingVertexShader string
-
-	//go:embed shaders/postprocess.frag
-	tonePostprocessingFragmentShader string
 )
 
 func NewShaderCollection() graphics.ShaderCollection {
@@ -71,116 +14,130 @@ func NewShaderCollection() graphics.ShaderCollection {
 		DirectionalLightSet: newDirectionalLightShaderSet,
 		AmbientLightSet:     newAmbientLightShaderSet,
 		PointLightSet:       newPointLightShaderSet,
+		SpotLightSet:        newSpotLightShaderSet,
 		SkyboxSet:           newSkyboxShaderSet,
 		SkycolorSet:         newSkycolorShaderSet,
+		DebugSet:            newDebugShaderSet,
 		ExposureSet:         newExposureShaderSet,
 		PostprocessingSet:   newPostprocessingShaderSet,
 	}
 }
 
 func newShadowMappingSet(cfg graphics.ShadowMappingShaderConfig) graphics.ShaderSet {
-	vsBuilder := internal.NewShaderSourceBuilder(shadowMappingVertexShader)
-	fsBuilder := internal.NewShaderSourceBuilder(shadowMappingFragmentShader)
+	var settings struct {
+		UseArmature bool
+	}
 	if cfg.HasArmature {
-		vsBuilder.AddFeature("USES_BONES")
-		fsBuilder.AddFeature("USES_BONES")
+		settings.UseArmature = true
 	}
 	return graphics.ShaderSet{
-		VertexShader:   vsBuilder.Build(),
-		FragmentShader: fsBuilder.Build(),
+		VertexShader:   shader.RunTemplate("shadow.vert.glsl", settings),
+		FragmentShader: shader.RunTemplate("shadow.frag.glsl", settings),
 	}
 }
 
 func newPBRGeometrySet(cfg graphics.PBRGeometryShaderConfig) graphics.ShaderSet {
-	vsBuilder := internal.NewShaderSourceBuilder(pbrGeometryVertexShader)
-	fsBuilder := internal.NewShaderSourceBuilder(pbrGeometryFragmentShader)
+	var settings struct {
+		UseArmature       bool
+		UseAlphaTest      bool
+		UseVertexColoring bool
+		UseTexturing      bool
+		UseAlbedoTexture  bool
+	}
 	if cfg.HasArmature {
-		vsBuilder.AddFeature("USES_BONES")
-		fsBuilder.AddFeature("USES_BONES")
+		settings.UseArmature = true
 	}
 	if cfg.HasAlphaTesting {
-		vsBuilder.AddFeature("USES_ALPHA_TEST")
-		fsBuilder.AddFeature("USES_ALPHA_TEST")
+		settings.UseAlphaTest = true
+	}
+	if cfg.HasVertexColors {
+		settings.UseVertexColoring = true
 	}
 	if cfg.HasAlbedoTexture {
-		vsBuilder.AddFeature("USES_ALBEDO_TEXTURE")
-		fsBuilder.AddFeature("USES_ALBEDO_TEXTURE")
-		vsBuilder.AddFeature("USES_TEX_COORD0")
-		fsBuilder.AddFeature("USES_TEX_COORD0")
+		settings.UseTexturing = true
+		settings.UseAlbedoTexture = true
 	}
 	return graphics.ShaderSet{
-		VertexShader:   vsBuilder.Build(),
-		FragmentShader: fsBuilder.Build(),
-	}
-}
-
-func newDirectionalLightShaderSet() graphics.ShaderSet {
-	vsBuilder := internal.NewShaderSourceBuilder(directionalLightVertexShader)
-	fsBuilder := internal.NewShaderSourceBuilder(directionalLightFragmentShader)
-	return graphics.ShaderSet{
-		VertexShader:   vsBuilder.Build(),
-		FragmentShader: fsBuilder.Build(),
+		VertexShader:   shader.RunTemplate("pbr_geometry.vert.glsl", settings),
+		FragmentShader: shader.RunTemplate("pbr_geometry.frag.glsl", settings),
 	}
 }
 
 func newAmbientLightShaderSet() graphics.ShaderSet {
-	vsBuilder := internal.NewShaderSourceBuilder(ambientLightVertexShader)
-	fsBuilder := internal.NewShaderSourceBuilder(ambientLightFragmentShader)
 	return graphics.ShaderSet{
-		VertexShader:   vsBuilder.Build(),
-		FragmentShader: fsBuilder.Build(),
+		VertexShader:   shader.RunTemplate("ambient_light.vert.glsl", struct{}{}),
+		FragmentShader: shader.RunTemplate("ambient_light.frag.glsl", struct{}{}),
 	}
 }
 
 func newPointLightShaderSet() graphics.ShaderSet {
-	vsBuilder := internal.NewShaderSourceBuilder(pointLightVertexShader)
-	fsBuilder := internal.NewShaderSourceBuilder(pointLightFragmentShader)
 	return graphics.ShaderSet{
-		VertexShader:   vsBuilder.Build(),
-		FragmentShader: fsBuilder.Build(),
+		VertexShader:   shader.RunTemplate("point_light.vert.glsl", struct{}{}),
+		FragmentShader: shader.RunTemplate("point_light.frag.glsl", struct{}{}),
+	}
+}
+
+func newSpotLightShaderSet() graphics.ShaderSet {
+	return graphics.ShaderSet{
+		VertexShader:   shader.RunTemplate("spot_light.vert.glsl", struct{}{}),
+		FragmentShader: shader.RunTemplate("spot_light.frag.glsl", struct{}{}),
+	}
+}
+
+func newDirectionalLightShaderSet() graphics.ShaderSet {
+	var settings struct {
+		UseShadowMapping bool
+	}
+	settings.UseShadowMapping = true // TODO
+	return graphics.ShaderSet{
+		VertexShader:   shader.RunTemplate("directional_light.vert.glsl", settings),
+		FragmentShader: shader.RunTemplate("directional_light.frag.glsl", settings),
 	}
 }
 
 func newSkyboxShaderSet() graphics.ShaderSet {
-	vsBuilder := internal.NewShaderSourceBuilder(cubeSkyboxVertexShader)
-	fsBuilder := internal.NewShaderSourceBuilder(cubeSkyboxFragmentShader)
 	return graphics.ShaderSet{
-		VertexShader:   vsBuilder.Build(),
-		FragmentShader: fsBuilder.Build(),
+		VertexShader:   shader.RunTemplate("skybox.vert.glsl", struct{}{}),
+		FragmentShader: shader.RunTemplate("skybox.frag.glsl", struct{}{}),
 	}
 }
 
 func newSkycolorShaderSet() graphics.ShaderSet {
-	vsBuilder := internal.NewShaderSourceBuilder(colorSkyboxVertexShader)
-	fsBuilder := internal.NewShaderSourceBuilder(colorSkyboxFragmentShader)
 	return graphics.ShaderSet{
-		VertexShader:   vsBuilder.Build(),
-		FragmentShader: fsBuilder.Build(),
+		VertexShader:   shader.RunTemplate("skycolor.vert.glsl", struct{}{}),
+		FragmentShader: shader.RunTemplate("skycolor.frag.glsl", struct{}{}),
+	}
+}
+
+func newDebugShaderSet() graphics.ShaderSet {
+	return graphics.ShaderSet{
+		VertexShader:   shader.RunTemplate("debug.vert.glsl", struct{}{}),
+		FragmentShader: shader.RunTemplate("debug.frag.glsl", struct{}{}),
 	}
 }
 
 func newExposureShaderSet() graphics.ShaderSet {
-	vsBuilder := internal.NewShaderSourceBuilder(exposureVertexShader)
-	fsBuilder := internal.NewShaderSourceBuilder(exposureFragmentShader)
 	return graphics.ShaderSet{
-		VertexShader:   vsBuilder.Build(),
-		FragmentShader: fsBuilder.Build(),
+		VertexShader:   shader.RunTemplate("exposure.vert.glsl", struct{}{}),
+		FragmentShader: shader.RunTemplate("exposure.frag.glsl", struct{}{}),
 	}
 }
 
 func newPostprocessingShaderSet(cfg graphics.PostprocessingShaderConfig) graphics.ShaderSet {
-	vsBuilder := internal.NewShaderSourceBuilder(tonePostprocessingVertexShader)
-	fsBuilder := internal.NewShaderSourceBuilder(tonePostprocessingFragmentShader)
+	var settings struct {
+		UseReinhard    bool
+		UseExponential bool
+	}
 	switch cfg.ToneMapping {
 	case graphics.ReinhardToneMapping:
-		fsBuilder.AddFeature("MODE_REINHARD")
+		settings.UseReinhard = true
 	case graphics.ExponentialToneMapping:
-		fsBuilder.AddFeature("MODE_EXPONENTIAL")
+		settings.UseExponential = true
 	default:
 		panic(fmt.Errorf("unknown tone mapping mode: %s", cfg.ToneMapping))
 	}
 	return graphics.ShaderSet{
-		VertexShader:   vsBuilder.Build(),
-		FragmentShader: fsBuilder.Build(),
+		VertexShader:   shader.RunTemplate("postprocess.vert.glsl", settings),
+		FragmentShader: shader.RunTemplate("postprocess.frag.glsl", settings),
 	}
 }

@@ -1,47 +1,43 @@
+/*template "version.glsl"*/
+
 layout(location = 0) in vec4 coordIn;
 layout(location = 1) in vec3 normalIn;
-#if defined(USES_TEX_COORD0)
+/*if .UseTexturing*/
 layout(location = 3) in vec2 texCoordIn;
-#endif
-#if defined(USES_BONES)
+/*end*/
+/*if .UseVertexColoring*/
+layout(location = 4) in vec4 colorIn;
+/*end*/
+/*if .UseArmature*/
 layout(location = 5) in vec4 weightsIn;
 layout(location = 6) in uvec4 jointsIn;
-#endif
+/*end*/
 
-layout (std140) uniform Camera
-{
-	mat4 projectionMatrixIn;
-	mat4 viewMatrixIn;
-	mat4 cameraMatrixIn;
-};
+/*template "ubo_camera.glsl"*/
 
-#if defined(USES_BONES)
-layout (std140) uniform Model
-{
-	mat4 boneMatrixIn[256];
-};
-#else
-layout (std140) uniform Model
-{
-	mat4 modelMatrixIn[256];
-};
-#endif
+/*template "ubo_model.glsl"*/
 
 smooth out vec3 normalInOut;
-#if defined(USES_TEX_COORD0)
+/*if .UseTexturing*/
 smooth out vec2 texCoordInOut;
-#endif
+/*end*/
+/*if .UseVertexColoring*/
+smooth out vec4 colorInOut;
+/*end*/
 
 void main()
 {
-#if defined(USES_TEX_COORD0)
+	/*if .UseTexturing*/
 	texCoordInOut = texCoordIn;
-#endif
-#if defined(USES_BONES)
-	mat4 modelMatrixA = boneMatrixIn[jointsIn.x];
-	mat4 modelMatrixB = boneMatrixIn[jointsIn.y];
-	mat4 modelMatrixC = boneMatrixIn[jointsIn.z];
-	mat4 modelMatrixD = boneMatrixIn[jointsIn.w];
+	/*end*/
+	/*if .UseVertexColoring*/
+	colorInOut = colorIn;
+	/*end*/
+	/*if .UseArmature*/
+	mat4 modelMatrixA = modelMatrixIn[jointsIn.x];
+	mat4 modelMatrixB = modelMatrixIn[jointsIn.y];
+	mat4 modelMatrixC = modelMatrixIn[jointsIn.z];
+	mat4 modelMatrixD = modelMatrixIn[jointsIn.w];
 	vec4 worldPosition =
 		modelMatrixA * (coordIn * weightsIn.x) +
 		modelMatrixB * (coordIn * weightsIn.y) +
@@ -52,11 +48,11 @@ void main()
 		inverse(transpose(mat3(modelMatrixB))) * (normalIn * weightsIn.y) +
 		inverse(transpose(mat3(modelMatrixC))) * (normalIn * weightsIn.z) +
 		inverse(transpose(mat3(modelMatrixD))) * (normalIn * weightsIn.w);
-#else
+	/*else*/
 	mat4 modelMatrix = modelMatrixIn[gl_InstanceID];
 	vec4 worldPosition = modelMatrix * coordIn;
 	vec3 worldNormal = inverse(transpose(mat3(modelMatrix))) * normalIn;
-#endif
+	/*end*/
 	normalInOut = worldNormal;
 	gl_Position = projectionMatrixIn * (viewMatrixIn * worldPosition);
 }

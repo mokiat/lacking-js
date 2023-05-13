@@ -1,11 +1,8 @@
+/*template "version.glsl"*/
+
 layout(location = 0) in vec3 coordIn;
 
-layout (std140) uniform Camera
-{
-	mat4 projectionMatrixIn;
-	mat4 viewMatrixIn;
-	mat4 cameraMatrixIn;
-};
+/*template "ubo_camera.glsl"*/
 
 smooth out vec3 texCoordInOut;
 

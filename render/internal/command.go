@@ -210,8 +210,16 @@ func (q *CommandQueue) Release() {
 }
 
 func (q *CommandQueue) ensure(size int) {
-	if int(q.writeOffset)+size > len(q.data) {
-		q.data = append(q.data, make([]byte, len(q.data))...) // double the size
+	requiredSize := int(q.writeOffset) + size
+	currentSize := len(q.data)
+	if requiredSize > currentSize {
+		newSize := currentSize * 2
+		for newSize < requiredSize {
+			newSize *= 2
+		}
+		newData := make([]byte, newSize)
+		copy(newData, q.data)
+		q.data = newData
 	}
 }
 

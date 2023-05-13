@@ -22,8 +22,13 @@ func newLoop(htmlDocument, htmlCanvas js.Value, controller app.Controller) *loop
 		htmlCanvas:   htmlCanvas,
 		controller:   controller,
 		tasks:        make(chan func() error, taskQueueSize),
-		gamepads:     make(map[int]struct{}),
-		shouldStop:   false,
+		gamepads: [4]*Gamepad{
+			newGamepad(0),
+			newGamepad(1),
+			newGamepad(2),
+			newGamepad(3),
+		},
+		shouldStop: false,
 	}
 }
 
@@ -34,7 +39,7 @@ type loop struct {
 	htmlCanvas   js.Value
 	controller   app.Controller
 	tasks        chan func() error
-	gamepads     map[int]struct{}
+	gamepads     [4]*Gamepad
 	shouldStop   bool
 }
 
@@ -82,16 +87,6 @@ func (l *loop) Run() error {
 	l.htmlCanvas.Call("addEventListener", "wheel", mouseScrollCallback)
 	defer l.htmlCanvas.Call("removeEventListener", "wheel", mouseScrollCallback)
 
-	gamepadConnectedCallback := js.FuncOf(l.onJSGamepadConnected)
-	defer gamepadConnectedCallback.Release()
-	js.Global().Call("addEventListener", "gamepadconnected", gamepadConnectedCallback)
-	defer js.Global().Call("removeEventListener", "gamepadconnected", gamepadConnectedCallback)
-
-	gamepadDisconnectedCallback := js.FuncOf(l.onJSGamepadDisconnected)
-	defer gamepadDisconnectedCallback.Release()
-	js.Global().Call("addEventListener", "gamepaddisconnected", gamepadDisconnectedCallback)
-	defer js.Global().Call("removeEventListener", "gamepaddisconnected", gamepadDisconnectedCallback)
-
 	w, h := l.Size()
 	l.controller.OnResize(l, w, h)
 	l.controller.OnFramebufferResize(l, w, h)
@@ -106,6 +101,10 @@ func (l *loop) Run() error {
 				done <- fmt.Errorf("failed to cleanup within timeout")
 			}
 			return true
+		}
+
+		for _, gamepad := range l.gamepads {
+			gamepad.markDirty()
 		}
 
 		l.processTasks(taskProcessingTimeout)
@@ -138,45 +137,12 @@ func (l *loop) Size() (int, int) {
 	return width, height
 }
 
-func (l *loop) GamepadState(index int) (app.GamepadState, bool) {
-	if _, ok := l.gamepads[index]; !ok {
-		return app.GamepadState{}, false
+func (l *loop) Gamepads() [4]app.Gamepad {
+	var result [4]app.Gamepad
+	for i := range result {
+		result[i] = l.gamepads[i]
 	}
-
-	gamepads := js.Global().Get("navigator").Call("getGamepads")
-	if gamepads.IsNull() {
-		return app.GamepadState{}, false
-	}
-
-	gamepad := gamepads.Index(index)
-	if gamepad.IsNull() {
-		return app.GamepadState{}, false
-	}
-
-	if gamepad.Get("mapping").String() != "standard" {
-		return app.GamepadState{}, false
-	}
-
-	buttons := gamepad.Get("buttons")
-	axes := gamepad.Get("axes")
-	return app.GamepadState{
-		LeftStickX:      axes.Index(0).Float(),
-		LeftStickY:      -axes.Index(1).Float(),
-		RightStickX:     axes.Index(2).Float(),
-		RightStickY:     -axes.Index(3).Float(),
-		LeftTrigger:     buttons.Index(6).Get("value").Float(),
-		RightTrigger:    buttons.Index(7).Get("value").Float(),
-		LeftBumper:      buttons.Index(4).Get("pressed").Bool(),
-		RightBumper:     buttons.Index(5).Get("pressed").Bool(),
-		SquareButton:    buttons.Index(2).Get("pressed").Bool(),
-		CircleButton:    buttons.Index(1).Get("pressed").Bool(),
-		TriangleButton:  buttons.Index(3).Get("pressed").Bool(),
-		CrossButton:     buttons.Index(0).Get("pressed").Bool(),
-		DpadUpButton:    buttons.Index(12).Get("pressed").Bool(),
-		DpadDownButton:  buttons.Index(13).Get("pressed").Bool(),
-		DpadLeftButton:  buttons.Index(14).Get("pressed").Bool(),
-		DpadRightButton: buttons.Index(15).Get("pressed").Bool(),
-	}, true
+	return result
 }
 
 func (l *loop) Schedule(fn func() error) {
@@ -373,21 +339,7 @@ func (l *loop) onJSMouseWheel(this js.Value, args []js.Value) interface{} {
 		X:       int(event.Get("offsetX").Float()),
 		Y:       int(event.Get("offsetY").Float()),
 		Type:    app.MouseEventTypeScroll,
-		ScrollX: event.Get("deltaX").Float(),
-		ScrollY: event.Get("deltaY").Float(),
+		ScrollX: event.Get("deltaX").Float() / 100.0,
+		ScrollY: -event.Get("deltaY").Float() / 100.0,
 	})
-}
-
-func (l *loop) onJSGamepadConnected(this js.Value, args []js.Value) interface{} {
-	event := args[0]
-	index := event.Get("gamepad").Get("index").Int()
-	l.gamepads[index] = struct{}{}
-	return true
-}
-
-func (l *loop) onJSGamepadDisconnected(this js.Value, args []js.Value) interface{} {
-	event := args[0]
-	index := event.Get("gamepad").Get("index").Int()
-	delete(l.gamepads, index)
-	return true
 }
