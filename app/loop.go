@@ -41,6 +41,11 @@ type loop struct {
 	tasks        chan func() error
 	gamepads     [4]*Gamepad
 	shouldStop   bool
+
+	knownFramebufferWidth  int
+	knownFramebufferHeight int
+	knownWidth             int
+	knownHeight            int
 }
 
 func (l *loop) Run() error {
@@ -87,13 +92,17 @@ func (l *loop) Run() error {
 	l.htmlCanvas.Call("addEventListener", "wheel", mouseScrollCallback)
 	defer l.htmlCanvas.Call("removeEventListener", "wheel", mouseScrollCallback)
 
-	w, h := l.Size()
-	l.controller.OnResize(l, w, h)
-	l.controller.OnFramebufferResize(l, w, h)
+	l.knownFramebufferWidth, l.knownFramebufferHeight = l.FramebufferSize()
+	l.controller.OnFramebufferResize(l, l.knownFramebufferWidth, l.knownFramebufferHeight)
+
+	l.knownWidth, l.knownHeight = l.Size()
+	l.controller.OnResize(l, l.knownWidth, l.knownHeight)
 
 	done := make(chan error, 1)
 	var loopFunc js.Func
 	loopFunc = js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		l.checkResized()
+
 		if l.shouldStop {
 			if l.processTasks(5 * time.Second) {
 				done <- nil
@@ -127,13 +136,19 @@ func (l *loop) SetTitle(title string) {
 }
 
 func (l *loop) SetSize(width, height int) {
-	l.htmlCanvas.Set("width", width)
-	l.htmlCanvas.Set("height", height)
+	l.htmlCanvas.Set("clientWidth", width)
+	l.htmlCanvas.Set("clientHeight", height)
+}
+
+func (l *loop) FramebufferSize() (int, int) {
+	width := l.htmlCanvas.Get("width").Int()
+	height := l.htmlCanvas.Get("height").Int()
+	return width, height
 }
 
 func (l *loop) Size() (int, int) {
-	width := l.htmlCanvas.Get("width").Int()
-	height := l.htmlCanvas.Get("height").Int()
+	width := l.htmlCanvas.Get("clientWidth").Int()
+	height := l.htmlCanvas.Get("clientHeight").Int()
 	return width, height
 }
 
@@ -191,6 +206,22 @@ func (l *loop) SetCursorLocked(locked bool) {
 
 func (l *loop) Close() {
 	l.shouldStop = true
+}
+
+func (l *loop) checkResized() {
+	framebufferWidth, framebufferHeight := l.FramebufferSize()
+	if framebufferWidth != l.knownFramebufferWidth || framebufferHeight != l.knownFramebufferHeight {
+		l.knownFramebufferWidth = framebufferWidth
+		l.knownFramebufferHeight = framebufferHeight
+		l.controller.OnFramebufferResize(l, framebufferWidth, framebufferHeight)
+	}
+
+	width, height := l.Size()
+	if width != l.knownWidth || height != l.knownHeight {
+		l.knownWidth = width
+		l.knownHeight = height
+		l.controller.OnResize(l, width, height)
+	}
 }
 
 func (l *loop) processTasks(limit time.Duration) bool {
