@@ -38,6 +38,7 @@ type loop struct {
 	htmlDocument js.Value
 	htmlCanvas   js.Value
 	controller   app.Controller
+	cursor       *Cursor
 	tasks        chan func()
 	gamepads     [4]*Gamepad
 	shouldStop   bool
@@ -173,11 +174,20 @@ func (l *loop) Invalidate() {
 }
 
 func (l *loop) CreateCursor(definition app.CursorDefinition) app.Cursor {
-	panic("TODO")
+	return &Cursor{
+		path:     definition.Path,
+		hotspotX: definition.HotspotX,
+		hotspotY: definition.HotspotY,
+	}
 }
 
 func (l *loop) UseCursor(cursor app.Cursor) {
-	panic("TODO")
+	if appCursor, ok := cursor.(*Cursor); ok {
+		l.cursor = appCursor
+	} else {
+		l.cursor = nil
+	}
+	l.SetCursorVisible(l.CursorVisible()) // force refresh
 }
 
 func (l *loop) CursorVisible() bool {
@@ -187,7 +197,13 @@ func (l *loop) CursorVisible() bool {
 
 func (l *loop) SetCursorVisible(visible bool) {
 	if visible {
-		l.htmlCanvas.Get("style").Set("cursor", "auto")
+		if l.cursor != nil {
+			cursorStyle := fmt.Sprintf("url(%s) %d %d, auto",
+				l.cursor.path, l.cursor.hotspotX, l.cursor.hotspotY)
+			l.htmlCanvas.Get("style").Set("cursor", cursorStyle)
+		} else {
+			l.htmlCanvas.Get("style").Set("cursor", "auto")
+		}
 	} else {
 		l.htmlCanvas.Get("style").Set("cursor", "none")
 	}
