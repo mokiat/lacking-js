@@ -8,7 +8,10 @@ import (
 	"syscall/js"
 	"time"
 
+	jsrender "github.com/mokiat/lacking-js/render"
 	"github.com/mokiat/lacking/app"
+	"github.com/mokiat/lacking/audio"
+	"github.com/mokiat/lacking/render"
 )
 
 const (
@@ -21,6 +24,7 @@ func newLoop(htmlDocument, htmlCanvas js.Value, controller app.Controller) *loop
 		htmlDocument: htmlDocument,
 		htmlCanvas:   htmlCanvas,
 		controller:   controller,
+		renderAPI:    jsrender.NewAPI(),
 		tasks:        make(chan func(), taskQueueSize),
 		gamepads: [4]*Gamepad{
 			newGamepad(0),
@@ -38,6 +42,7 @@ type loop struct {
 	htmlDocument js.Value
 	htmlCanvas   js.Value
 	controller   app.Controller
+	renderAPI    render.API
 	cursor       *Cursor
 	tasks        chan func()
 	gamepads     [4]*Gamepad
@@ -218,6 +223,14 @@ func (l *loop) SetCursorLocked(locked bool) {
 	} else {
 		l.htmlCanvas.Call("exitPointerLock")
 	}
+}
+
+func (l *loop) RenderAPI() render.API {
+	return l.renderAPI
+}
+
+func (l *loop) AudioAPI() audio.API {
+	return nil
 }
 
 func (l *loop) Close() {
