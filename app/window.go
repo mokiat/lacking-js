@@ -61,5 +61,14 @@ func Run(cfg *Config, controller app.Controller) error {
 	}
 
 	l := newLoop(htmlDocument, htmlCanvas, controller)
+	if cfg.cursor != nil {
+		cursor := l.CreateCursor(*cfg.cursor)
+		defer cursor.Destroy()
+		l.UseCursor(cursor)
+		defer l.UseCursor(nil)
+	}
+	if !cfg.cursorVisible {
+		l.SetCursorVisible(false)
+	}
 	return l.Run()
 }

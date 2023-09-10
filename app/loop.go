@@ -8,7 +8,10 @@ import (
 	"syscall/js"
 	"time"
 
+	jsrender "github.com/mokiat/lacking-js/render"
 	"github.com/mokiat/lacking/app"
+	"github.com/mokiat/lacking/audio"
+	"github.com/mokiat/lacking/render"
 )
 
 const (
@@ -21,7 +24,8 @@ func newLoop(htmlDocument, htmlCanvas js.Value, controller app.Controller) *loop
 		htmlDocument: htmlDocument,
 		htmlCanvas:   htmlCanvas,
 		controller:   controller,
-		tasks:        make(chan func() error, taskQueueSize),
+		renderAPI:    jsrender.NewAPI(),
+		tasks:        make(chan func(), taskQueueSize),
 		gamepads: [4]*Gamepad{
 			newGamepad(0),
 			newGamepad(1),
@@ -38,7 +42,9 @@ type loop struct {
 	htmlDocument js.Value
 	htmlCanvas   js.Value
 	controller   app.Controller
-	tasks        chan func() error
+	renderAPI    render.API
+	cursor       *Cursor
+	tasks        chan func()
 	gamepads     [4]*Gamepad
 	shouldStop   bool
 
@@ -140,15 +146,15 @@ func (l *loop) SetSize(width, height int) {
 	l.htmlCanvas.Set("clientHeight", height)
 }
 
-func (l *loop) FramebufferSize() (int, int) {
-	width := l.htmlCanvas.Get("width").Int()
-	height := l.htmlCanvas.Get("height").Int()
-	return width, height
-}
-
 func (l *loop) Size() (int, int) {
 	width := l.htmlCanvas.Get("clientWidth").Int()
 	height := l.htmlCanvas.Get("clientHeight").Int()
+	return width, height
+}
+
+func (l *loop) FramebufferSize() (int, int) {
+	width := l.htmlCanvas.Get("width").Int()
+	height := l.htmlCanvas.Get("height").Int()
 	return width, height
 }
 
@@ -160,7 +166,7 @@ func (l *loop) Gamepads() [4]app.Gamepad {
 	return result
 }
 
-func (l *loop) Schedule(fn func() error) {
+func (l *loop) Schedule(fn func()) {
 	select {
 	case l.tasks <- fn:
 	default:
@@ -173,11 +179,20 @@ func (l *loop) Invalidate() {
 }
 
 func (l *loop) CreateCursor(definition app.CursorDefinition) app.Cursor {
-	panic("TODO")
+	return &Cursor{
+		path:     definition.Path,
+		hotspotX: definition.HotspotX,
+		hotspotY: definition.HotspotY,
+	}
 }
 
 func (l *loop) UseCursor(cursor app.Cursor) {
-	panic("TODO")
+	if appCursor, ok := cursor.(*Cursor); ok {
+		l.cursor = appCursor
+	} else {
+		l.cursor = nil
+	}
+	l.SetCursorVisible(l.CursorVisible()) // force refresh
 }
 
 func (l *loop) CursorVisible() bool {
@@ -187,7 +202,13 @@ func (l *loop) CursorVisible() bool {
 
 func (l *loop) SetCursorVisible(visible bool) {
 	if visible {
-		l.htmlCanvas.Get("style").Set("cursor", "auto")
+		if l.cursor != nil {
+			cursorStyle := fmt.Sprintf("url(%s) %d %d, auto",
+				l.cursor.path, l.cursor.hotspotX, l.cursor.hotspotY)
+			l.htmlCanvas.Get("style").Set("cursor", cursorStyle)
+		} else {
+			l.htmlCanvas.Get("style").Set("cursor", "auto")
+		}
 	} else {
 		l.htmlCanvas.Get("style").Set("cursor", "none")
 	}
@@ -202,6 +223,14 @@ func (l *loop) SetCursorLocked(locked bool) {
 	} else {
 		l.htmlCanvas.Call("exitPointerLock")
 	}
+}
+
+func (l *loop) RenderAPI() render.API {
+	return l.renderAPI
+}
+
+func (l *loop) AudioAPI() audio.API {
+	return nil
 }
 
 func (l *loop) Close() {
@@ -229,9 +258,7 @@ func (l *loop) processTasks(limit time.Duration) bool {
 	for time.Since(startTime) < limit {
 		select {
 		case task := <-l.tasks:
-			if err := task(); err != nil {
-				panic(fmt.Errorf("task error: %w", err))
-			}
+			task()
 		default:
 			// No more tasks, we have consumed everything there
 			// is for now.
