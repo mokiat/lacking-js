@@ -21,6 +21,7 @@ const (
 
 func newLoop(htmlDocument, htmlCanvas js.Value, controller app.Controller) *loop {
 	return &loop{
+		platform:     newPlatform(),
 		htmlDocument: htmlDocument,
 		htmlCanvas:   htmlCanvas,
 		controller:   controller,
@@ -39,6 +40,7 @@ func newLoop(htmlDocument, htmlCanvas js.Value, controller app.Controller) *loop
 var _ app.Window = (*loop)(nil)
 
 type loop struct {
+	platform     *platform
 	htmlDocument js.Value
 	htmlCanvas   js.Value
 	controller   app.Controller
@@ -131,6 +133,10 @@ func (l *loop) Run() error {
 	js.Global().Call("requestAnimationFrame", loopFunc)
 	defer loopFunc.Release()
 	return <-done
+}
+
+func (l *loop) Platform() app.Platform {
+	return l.platform
 }
 
 func (l *loop) Title() string {
@@ -286,6 +292,9 @@ func (l *loop) onJSKeyDown(this js.Value, args []js.Value) interface{} {
 		if event.Get("altKey").Bool() {
 			modifiers = modifiers | app.KeyModifierSet(app.KeyModifierAlt)
 		}
+		if event.Get("metaKey").Bool() {
+			modifiers = modifiers | app.KeyModifierSet(app.KeyModifierSuper)
+		}
 		downConsumed = l.controller.OnKeyboardEvent(l, app.KeyboardEvent{
 			Type:      app.KeyboardEventTypeKeyDown,
 			Code:      keyCode,
@@ -324,6 +333,9 @@ func (l *loop) onJSKeyUp(this js.Value, args []js.Value) interface{} {
 	}
 	if event.Get("altKey").Bool() {
 		modifiers = modifiers | app.KeyModifierSet(app.KeyModifierAlt)
+	}
+	if event.Get("metaKey").Bool() {
+		modifiers = modifiers | app.KeyModifierSet(app.KeyModifierSuper)
 	}
 	return l.controller.OnKeyboardEvent(l, app.KeyboardEvent{
 		Type:      app.KeyboardEventTypeKeyUp,
