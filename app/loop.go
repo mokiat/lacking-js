@@ -11,6 +11,7 @@ import (
 	jsrender "github.com/mokiat/lacking-js/render"
 	"github.com/mokiat/lacking/app"
 	"github.com/mokiat/lacking/audio"
+	"github.com/mokiat/lacking/log"
 	"github.com/mokiat/lacking/render"
 )
 
@@ -54,6 +55,8 @@ type loop struct {
 	knownFramebufferHeight int
 	knownWidth             int
 	knownHeight            int
+
+	clipboardCallback js.Func
 }
 
 func (l *loop) Run() error {
@@ -103,6 +106,9 @@ func (l *loop) Run() error {
 	closeCallback := js.FuncOf(l.onCloseRequested)
 	defer closeCallback.Release()
 	js.Global().Set("onbeforeunload", closeCallback)
+
+	l.clipboardCallback = js.FuncOf(l.onClipboardReadText)
+	defer l.clipboardCallback.Release()
 
 	l.knownFramebufferWidth, l.knownFramebufferHeight = l.FramebufferSize()
 	l.controller.OnFramebufferResize(l, l.knownFramebufferWidth, l.knownFramebufferHeight)
@@ -236,11 +242,36 @@ func (l *loop) SetCursorLocked(locked bool) {
 }
 
 func (l *loop) RequestCopy(text string) {
-	// TODO
+	jsNavigator := js.Global().Get("navigator")
+	if jsNavigator.IsUndefined() || jsNavigator.IsNull() {
+		log.Warn("JavaScript navigator not found!")
+		return
+	}
+	jsClipboard := jsNavigator.Get("clipboard")
+	if jsClipboard.IsUndefined() || jsClipboard.IsNull() {
+		log.Warn("JavaScript clipboard not found!")
+		return
+	}
+	jsClipboard.Call("writeText", text)
 }
 
 func (l *loop) RequestPaste() {
-	// TODO
+	jsNavigator := js.Global().Get("navigator")
+	if jsNavigator.IsUndefined() || jsNavigator.IsNull() {
+		log.Warn("JavaScript navigator not found!")
+		return
+	}
+	jsClipboard := jsNavigator.Get("clipboard")
+	if jsClipboard.IsUndefined() || jsClipboard.IsNull() {
+		log.Warn("JavaScript clipboard not found!")
+		return
+	}
+	jsPromise := jsClipboard.Call("readText")
+	if jsPromise.IsUndefined() || jsPromise.IsNull() {
+		log.Warn("JavaScript clipboard.readText promise missing!")
+		return
+	}
+	jsPromise.Call("then", l.clipboardCallback)
 }
 
 func (l *loop) RenderAPI() render.API {
@@ -410,4 +441,15 @@ func (l *loop) onCloseRequested(this js.Value, args []js.Value) any {
 		return "reject"
 	}
 	return js.Null()
+}
+
+func (l *loop) onClipboardReadText(this js.Value, args []js.Value) any {
+	data := args[0]
+	text := data.String()
+	l.Schedule(func() {
+		l.controller.OnClipboardEvent(l, app.ClipboardEvent{
+			Text: text,
+		})
+	})
+	return nil
 }
