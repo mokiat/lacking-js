@@ -21,6 +21,8 @@ func init() {
 	keyboardCodeMapping["ControlRight"] = app.KeyCodeRightControl
 	keyboardCodeMapping["AltLeft"] = app.KeyCodeLeftAlt
 	keyboardCodeMapping["AltRight"] = app.KeyCodeRightAlt
+	keyboardCodeMapping["MetaLeft"] = app.KeyCodeLeftSuper
+	keyboardCodeMapping["MetaRight"] = app.KeyCodeRightSuper
 	keyboardCodeMapping["Backspace"] = app.KeyCodeBackspace
 	keyboardCodeMapping["Insert"] = app.KeyCodeInsert
 	keyboardCodeMapping["Delete"] = app.KeyCodeDelete
