@@ -7,7 +7,6 @@ import (
 	"syscall/js"
 
 	"github.com/mokiat/lacking/app"
-	"github.com/mokiat/lacking/log"
 	"github.com/mokiat/wasmgl"
 )
 
@@ -56,7 +55,7 @@ func Run(cfg *Config, controller app.Controller) error {
 	}
 	for _, ext := range cfg.glExtensions {
 		if wasmgl.GetExtension(ext) == nil {
-			log.Warn("[app] Extension %q might not be supported", ext)
+			appLogger.Warn("[app] Extension %q might not be supported", ext)
 		}
 	}
 

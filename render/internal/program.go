@@ -3,7 +3,6 @@ package internal
 import (
 	"errors"
 
-	"github.com/mokiat/lacking/log"
 	"github.com/mokiat/lacking/render"
 	"github.com/mokiat/wasmgl"
 )
@@ -22,7 +21,7 @@ func NewProgram(info render.ProgramInfo) *Program {
 		defer wasmgl.DetachShader(program.raw, fragmentShader.raw)
 	}
 	if err := program.link(); err != nil {
-		log.Error("Program link error: %v", err)
+		logger.Error("Program link error: %v!", err)
 	}
 	program.id = programs.Allocate(program)
 	if len(info.TextureBindings) > 0 {

@@ -3,7 +3,6 @@ package internal
 import (
 	"errors"
 
-	"github.com/mokiat/lacking/log"
 	"github.com/mokiat/lacking/render"
 	"github.com/mokiat/wasmgl"
 )
@@ -14,7 +13,7 @@ func NewVertexShader(info render.ShaderInfo) *Shader {
 	}
 	shader.setSourceCode(info.SourceCode)
 	if err := shader.compile(); err != nil {
-		log.Error("Shader compilation error: %v", err)
+		logger.Error("Shader compilation error: %v!", err)
 	}
 	return shader
 }
@@ -25,7 +24,7 @@ func NewFragmentShader(info render.ShaderInfo) *Shader {
 	}
 	shader.setSourceCode(info.SourceCode)
 	if err := shader.compile(); err != nil {
-		log.Error("Shader compilation error: %v", err)
+		logger.Error("Shader compilation error: %v!", err)
 	}
 	return shader
 }

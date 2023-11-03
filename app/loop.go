@@ -11,7 +11,6 @@ import (
 	jsrender "github.com/mokiat/lacking-js/render"
 	"github.com/mokiat/lacking/app"
 	"github.com/mokiat/lacking/audio"
-	"github.com/mokiat/lacking/log"
 	"github.com/mokiat/lacking/render"
 )
 
@@ -244,12 +243,12 @@ func (l *loop) SetCursorLocked(locked bool) {
 func (l *loop) RequestCopy(text string) {
 	jsNavigator := js.Global().Get("navigator")
 	if jsNavigator.IsUndefined() || jsNavigator.IsNull() {
-		log.Warn("JavaScript navigator not found!")
+		appLogger.Warn("JavaScript navigator not found!")
 		return
 	}
 	jsClipboard := jsNavigator.Get("clipboard")
 	if jsClipboard.IsUndefined() || jsClipboard.IsNull() {
-		log.Warn("JavaScript clipboard not found!")
+		appLogger.Warn("JavaScript clipboard not found!")
 		return
 	}
 	jsClipboard.Call("writeText", text)
@@ -258,17 +257,17 @@ func (l *loop) RequestCopy(text string) {
 func (l *loop) RequestPaste() {
 	jsNavigator := js.Global().Get("navigator")
 	if jsNavigator.IsUndefined() || jsNavigator.IsNull() {
-		log.Warn("JavaScript navigator not found!")
+		appLogger.Warn("JavaScript navigator not found!")
 		return
 	}
 	jsClipboard := jsNavigator.Get("clipboard")
 	if jsClipboard.IsUndefined() || jsClipboard.IsNull() {
-		log.Warn("JavaScript clipboard not found!")
+		appLogger.Warn("JavaScript clipboard not found!")
 		return
 	}
 	jsPromise := jsClipboard.Call("readText")
 	if jsPromise.IsUndefined() || jsPromise.IsNull() {
-		log.Warn("JavaScript clipboard.readText promise missing!")
+		appLogger.Warn("JavaScript clipboard.readText promise missing!")
 		return
 	}
 	jsPromise.Call("then", l.clipboardCallback)
