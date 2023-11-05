@@ -11,6 +11,7 @@ import (
 	jsrender "github.com/mokiat/lacking-js/render"
 	"github.com/mokiat/lacking/app"
 	"github.com/mokiat/lacking/audio"
+	"github.com/mokiat/lacking/debug/metric"
 	"github.com/mokiat/lacking/render"
 )
 
@@ -134,7 +135,14 @@ func (l *loop) Run() error {
 		}
 
 		l.processTasks(taskProcessingTimeout)
+
+		metric.BeginFrame()
+
+		ctrlRegion := metric.BeginRegion("controller")
 		l.controller.OnRender(l)
+		ctrlRegion.End()
+
+		metric.EndFrame()
 
 		js.Global().Call("requestAnimationFrame", loopFunc)
 		return true
