@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"github.com/mokiat/lacking/log"
 	"github.com/mokiat/lacking/render"
 	"github.com/mokiat/wasmgl"
 )
@@ -36,7 +35,7 @@ func NewFramebuffer(info render.FramebufferInfo) *Framebuffer {
 
 	status := wasmgl.CheckFramebufferStatus(wasmgl.FRAMEBUFFER)
 	if status != wasmgl.FRAMEBUFFER_COMPLETE {
-		log.Error("Framebuffer is incomplete")
+		logger.Error("Framebuffer is incomplete!")
 	}
 
 	result := &Framebuffer{
