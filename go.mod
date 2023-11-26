@@ -7,6 +7,7 @@ toolchain go1.21.1
 require (
 	github.com/mokiat/gomath v0.8.1
 	github.com/mokiat/lacking v0.14.0
+	github.com/mokiat/wasmal v0.1.0
 	github.com/mokiat/wasmgl v0.5.0
 )
 
