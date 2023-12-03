@@ -56,3 +56,7 @@ func (p *Player) Play(media *Media, info audio.PlayInfo) *Playback {
 		node: bufferSource,
 	}
 }
+
+func (p *Player) Close() {
+	p.audioContext.Close()
+}

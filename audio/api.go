@@ -24,3 +24,7 @@ func (a *API) CreateMedia(info audio.MediaInfo) audio.Media {
 func (a *API) Play(media audio.Media, info audio.PlayInfo) audio.Playback {
 	return a.player.Play(media.(*internal.Media), info)
 }
+
+func (a *API) Close() {
+	a.player.Close()
+}

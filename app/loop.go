@@ -48,7 +48,7 @@ type loop struct {
 	htmlCanvas   js.Value
 	controller   app.Controller
 	renderAPI    render.API
-	audioAPI     audio.API
+	audioAPI     *jsaudio.API
 	cursor       *Cursor
 	tasks        chan func()
 	gamepads     [4]*Gamepad
@@ -63,6 +63,8 @@ type loop struct {
 }
 
 func (l *loop) Run() error {
+	defer l.audioAPI.Close()
+
 	l.controller.OnCreate(l)
 	defer l.controller.OnDestroy(l)
 
