@@ -8,6 +8,7 @@ import (
 	"syscall/js"
 	"time"
 
+	jsaudio "github.com/mokiat/lacking-js/audio"
 	jsrender "github.com/mokiat/lacking-js/render"
 	"github.com/mokiat/lacking/app"
 	"github.com/mokiat/lacking/audio"
@@ -27,6 +28,7 @@ func newLoop(htmlDocument, htmlCanvas js.Value, controller app.Controller) *loop
 		htmlCanvas:   htmlCanvas,
 		controller:   controller,
 		renderAPI:    jsrender.NewAPI(),
+		audioAPI:     jsaudio.NewAPI(),
 		tasks:        make(chan func(), taskQueueSize),
 		gamepads: [4]*Gamepad{
 			newGamepad(0),
@@ -46,6 +48,7 @@ type loop struct {
 	htmlCanvas   js.Value
 	controller   app.Controller
 	renderAPI    render.API
+	audioAPI     *jsaudio.API
 	cursor       *Cursor
 	tasks        chan func()
 	gamepads     [4]*Gamepad
@@ -60,6 +63,8 @@ type loop struct {
 }
 
 func (l *loop) Run() error {
+	defer l.audioAPI.Close()
+
 	l.controller.OnCreate(l)
 	defer l.controller.OnDestroy(l)
 
@@ -286,7 +291,7 @@ func (l *loop) RenderAPI() render.API {
 }
 
 func (l *loop) AudioAPI() audio.API {
-	return nil
+	return l.audioAPI
 }
 
 func (l *loop) Close() {
