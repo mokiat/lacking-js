@@ -35,7 +35,7 @@ func NewFramebuffer(info render.FramebufferInfo) *Framebuffer {
 
 	status := wasmgl.CheckFramebufferStatus(wasmgl.FRAMEBUFFER)
 	if status != wasmgl.FRAMEBUFFER_COMPLETE {
-		logger.Error("Framebuffer is incomplete!")
+		logger.Error("Framebuffer (%q) is incomplete!", info.Label)
 	}
 
 	result := &Framebuffer{
