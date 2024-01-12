@@ -3,7 +3,7 @@
 
 layout(location = 0) out vec4 fragmentColor;
 
-uniform sampler2D textureIn;
+uniform sampler2D fontTextureIn;
 uniform vec4 colorIn;
 
 smooth in vec4 clipDistancesInOut;
@@ -16,6 +16,6 @@ void main()
 		discard;
 	}
 
-	float amount = texture(textureIn, texCoordInOut).x;
+	float amount = texture(fontTextureIn, texCoordInOut).x;
 	fragmentColor = vec4(amount) * colorIn;
 }

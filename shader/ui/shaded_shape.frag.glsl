@@ -3,7 +3,7 @@
 
 layout(location = 0) out vec4 fragmentColor;
 
-uniform sampler2D textureIn;
+uniform sampler2D colorTextureIn;
 uniform vec4 colorIn;
 
 smooth in vec4 clipDistancesInOut;
@@ -16,5 +16,5 @@ void main()
 		discard;
 	}
 
-	fragmentColor = texture(textureIn, texCoordInOut) * colorIn;
+	fragmentColor = texture(colorTextureIn, texCoordInOut) * colorIn;
 }

@@ -2,7 +2,8 @@
 
 layout(location = 0) in vec2 positionIn;
 
-uniform mat4 projectionMatrixIn;
+/*template "ubo_camera.glsl"*/
+
 uniform mat4 transformMatrixIn;
 uniform mat4 clipMatrixIn;
 uniform mat4 textureTransformMatrixIn;
