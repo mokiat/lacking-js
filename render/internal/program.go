@@ -7,23 +7,36 @@ import (
 	"github.com/mokiat/wasmgl"
 )
 
-func NewProgram(info render.ProgramInfo) *Program {
+type ProgramInfo struct {
+	Label           string
+	VertexCode      string
+	FragmentCode    string
+	TextureBindings []render.TextureBinding
+	UniformBindings []render.UniformBinding
+}
+
+func NewProgram(info ProgramInfo) *Program {
+	vertexShader := newVertexShader(info.Label, info.VertexCode)
+	defer vertexShader.Release()
+
+	fragmentShader := newFragmentShader(info.Label, info.FragmentCode)
+	defer fragmentShader.Release()
+
 	program := &Program{
 		raw:      wasmgl.CreateProgram(),
 		uniforms: make(map[*UniformLocation]struct{}),
 	}
-	if vertexShader, ok := info.VertexShader.(*Shader); ok {
-		wasmgl.AttachShader(program.raw, vertexShader.raw)
-		defer wasmgl.DetachShader(program.raw, vertexShader.raw)
-	}
-	if fragmentShader, ok := info.FragmentShader.(*Shader); ok {
-		wasmgl.AttachShader(program.raw, fragmentShader.raw)
-		defer wasmgl.DetachShader(program.raw, fragmentShader.raw)
-	}
+
+	wasmgl.AttachShader(program.raw, vertexShader.raw)
+	defer wasmgl.DetachShader(program.raw, vertexShader.raw)
+
+	wasmgl.AttachShader(program.raw, fragmentShader.raw)
+	defer wasmgl.DetachShader(program.raw, fragmentShader.raw)
+
 	if err := program.link(); err != nil {
 		logger.Error("Program link error: %v!", err)
 	}
-	program.id = programs.Allocate(program)
+
 	if len(info.TextureBindings) > 0 {
 		wasmgl.UseProgram(program.raw)
 		for _, binding := range info.TextureBindings {
@@ -34,12 +47,15 @@ func NewProgram(info render.ProgramInfo) *Program {
 		}
 		wasmgl.UseProgram(wasmgl.NilProgram)
 	}
+
 	for _, binding := range info.UniformBindings {
 		location := wasmgl.GetUniformBlockIndex(program.raw, binding.Name)
 		if location != wasmgl.INVALID_INDEX {
 			wasmgl.UniformBlockBinding(program.raw, location, wasmgl.GLuint(binding.Index))
 		}
 	}
+
+	program.id = programs.Allocate(program)
 	return program
 }
 
@@ -50,6 +66,7 @@ type Program struct {
 	uniforms map[*UniformLocation]struct{}
 }
 
+// Deprecated: To be removed.
 func (p *Program) UniformLocation(name string) render.UniformLocation {
 	result := &UniformLocation{
 		raw: wasmgl.GetUniformLocation(p.raw, name),
