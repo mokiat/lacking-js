@@ -3,8 +3,8 @@ package game
 import (
 	"fmt"
 
+	"github.com/mokiat/lacking-js/internal/shader"
 	"github.com/mokiat/lacking-js/render"
-	"github.com/mokiat/lacking-js/shader"
 	"github.com/mokiat/lacking/game/graphics"
 	renderapi "github.com/mokiat/lacking/render"
 )
