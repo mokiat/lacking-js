@@ -4,8 +4,7 @@ layout(location = 0) in vec2 positionIn;
 
 /*template "ubo_camera.glsl"*/
 
-uniform mat4 transformMatrixIn;
-uniform mat4 clipMatrixIn;
+/*template "ubo_model.glsl"*/
 
 smooth out vec4 clipDistancesInOut;
 
