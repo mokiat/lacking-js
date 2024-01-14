@@ -6,6 +6,7 @@ import (
 	"github.com/mokiat/lacking-js/internal/shader"
 	"github.com/mokiat/lacking-js/render"
 	"github.com/mokiat/lacking/game/graphics"
+	"github.com/mokiat/lacking/game/graphics/shading"
 	renderapi "github.com/mokiat/lacking/render"
 )
 
@@ -16,6 +17,12 @@ var construct = shader.Load(
 
 func NewShaderCollection() graphics.ShaderCollection {
 	return graphics.ShaderCollection{
+		BuildGeometry: func(meshConfig graphics.MeshConfig, fn shading.GeometryFunc) renderapi.ProgramCode {
+			panic("not implemented")
+		},
+		BuildForward: func(meshConfig graphics.MeshConfig, fn shading.ForwardFunc) renderapi.ProgramCode {
+			panic("not implemented")
+		},
 		ShadowMappingSet:    newShadowMappingSet,
 		PBRGeometrySet:      newPBRGeometrySet,
 		DirectionalLightSet: newDirectionalLightShaderSet,
