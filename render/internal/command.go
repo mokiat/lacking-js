@@ -54,61 +54,6 @@ func (q *CommandQueue) BindPipeline(pipeline render.Pipeline) {
 	})
 }
 
-func (q *CommandQueue) Uniform1f(location render.UniformLocation, value float32) {
-	PushCommand(q, CommandHeader{
-		Kind: CommandKindUniform1f,
-	})
-	intLocation := location.(*UniformLocation)
-	PushCommand(q, CommandUniform1f{
-		Location: intLocation.id,
-		Value:    value,
-	})
-}
-
-func (q *CommandQueue) Uniform1i(location render.UniformLocation, value int) {
-	PushCommand(q, CommandHeader{
-		Kind: CommandKindUniform1i,
-	})
-	intLocation := location.(*UniformLocation)
-	PushCommand(q, CommandUniform1i{
-		Location: intLocation.id,
-		Value:    int32(value),
-	})
-}
-
-func (q *CommandQueue) Uniform3f(location render.UniformLocation, values [3]float32) {
-	PushCommand(q, CommandHeader{
-		Kind: CommandKindUniform3f,
-	})
-	intLocation := location.(*UniformLocation)
-	PushCommand(q, CommandUniform3f{
-		Location: intLocation.id,
-		Values:   values,
-	})
-}
-
-func (q *CommandQueue) Uniform4f(location render.UniformLocation, values [4]float32) {
-	PushCommand(q, CommandHeader{
-		Kind: CommandKindUniform4f,
-	})
-	intLocation := location.(*UniformLocation)
-	PushCommand(q, CommandUniform4f{
-		Location: intLocation.id,
-		Values:   values,
-	})
-}
-
-func (q *CommandQueue) UniformMatrix4f(location render.UniformLocation, values [16]float32) {
-	PushCommand(q, CommandHeader{
-		Kind: CommandKindUniformMatrix4f,
-	})
-	intLocation := location.(*UniformLocation)
-	PushCommand(q, CommandUniformMatrix4f{
-		Location: intLocation.id,
-		Values:   values,
-	})
-}
-
 func (q *CommandQueue) UniformBufferUnit(index int, buffer render.Buffer) {
 	PushCommand(q, CommandHeader{
 		Kind: CommandKindUniformBufferUnit,
@@ -258,26 +203,6 @@ type CommandKind uint8
 
 const (
 	CommandKindBindPipeline CommandKind = iota
-	CommandKindTopology
-	CommandKindCullTest
-	CommandKindFrontFace
-	CommandKindDepthTest
-	CommandKindDepthWrite
-	CommandKindDepthComparison
-	CommandKindStencilTest
-	CommandKindStencilOperation
-	CommandKindStencilFunc
-	CommandKindStencilMask
-	CommandKindColorWrite
-	CommandKindBlendColor
-	CommandKindBlendEquation
-	CommandKindBlendFunc
-	CommandBindKindVertexArray
-	CommandKindUniform1f
-	CommandKindUniform1i
-	CommandKindUniform3f
-	CommandKindUniform4f
-	CommandKindUniformMatrix4f
 	CommandKindUniformBufferUnit
 	CommandKindUniformBufferUnitRange
 	CommandKindTextureUnit
@@ -385,31 +310,6 @@ type CommandBlendFunc struct {
 type CommandBindVertexArray struct {
 	VertexArrayID uint32
 	IndexFormat   uint32
-}
-
-type CommandUniform1f struct {
-	Location int32
-	Value    float32
-}
-
-type CommandUniform1i struct {
-	Location int32
-	Value    int32
-}
-
-type CommandUniform3f struct {
-	Location int32
-	Values   [3]float32
-}
-
-type CommandUniform4f struct {
-	Location int32
-	Values   [4]float32
-}
-
-type CommandUniformMatrix4f struct {
-	Location int32
-	Values   [16]float32
 }
 
 type CommandUniformBufferUnit struct {

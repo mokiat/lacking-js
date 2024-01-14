@@ -3,8 +3,9 @@
 
 layout(location = 0) out vec4 fragmentColor;
 
-uniform sampler2D textureIn;
-uniform vec4 colorIn;
+/*template "ubo_material.glsl"*/
+
+uniform sampler2D colorTextureIn;
 
 smooth in vec4 clipDistancesInOut;
 smooth in vec2 texCoordInOut;
@@ -16,6 +17,5 @@ void main()
 		discard;
 	}
 
-	float amount = texture(textureIn, texCoordInOut).x;
-	fragmentColor = vec4(amount) * colorIn;
+	fragmentColor = texture(colorTextureIn, texCoordInOut) * colorIn;
 }
