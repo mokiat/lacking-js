@@ -54,39 +54,6 @@ func (q *CommandQueue) BindPipeline(pipeline render.Pipeline) {
 	})
 }
 
-func (q *CommandQueue) Uniform1f(location render.UniformLocation, value float32) {
-	PushCommand(q, CommandHeader{
-		Kind: CommandKindUniform1f,
-	})
-	intLocation := location.(*UniformLocation)
-	PushCommand(q, CommandUniform1f{
-		Location: intLocation.id,
-		Value:    value,
-	})
-}
-
-func (q *CommandQueue) Uniform3f(location render.UniformLocation, values [3]float32) {
-	PushCommand(q, CommandHeader{
-		Kind: CommandKindUniform3f,
-	})
-	intLocation := location.(*UniformLocation)
-	PushCommand(q, CommandUniform3f{
-		Location: intLocation.id,
-		Values:   values,
-	})
-}
-
-func (q *CommandQueue) Uniform4f(location render.UniformLocation, values [4]float32) {
-	PushCommand(q, CommandHeader{
-		Kind: CommandKindUniform4f,
-	})
-	intLocation := location.(*UniformLocation)
-	PushCommand(q, CommandUniform4f{
-		Location: intLocation.id,
-		Values:   values,
-	})
-}
-
 func (q *CommandQueue) UniformBufferUnit(index int, buffer render.Buffer) {
 	PushCommand(q, CommandHeader{
 		Kind: CommandKindUniformBufferUnit,
@@ -236,9 +203,6 @@ type CommandKind uint8
 
 const (
 	CommandKindBindPipeline CommandKind = iota
-	CommandKindUniform1f
-	CommandKindUniform3f
-	CommandKindUniform4f
 	CommandKindUniformBufferUnit
 	CommandKindUniformBufferUnitRange
 	CommandKindTextureUnit
@@ -346,21 +310,6 @@ type CommandBlendFunc struct {
 type CommandBindVertexArray struct {
 	VertexArrayID uint32
 	IndexFormat   uint32
-}
-
-type CommandUniform1f struct {
-	Location int32
-	Value    float32
-}
-
-type CommandUniform3f struct {
-	Location int32
-	Values   [3]float32
-}
-
-type CommandUniform4f struct {
-	Location int32
-	Values   [4]float32
 }
 
 type CommandUniformBufferUnit struct {

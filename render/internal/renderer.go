@@ -250,15 +250,6 @@ func (r *Renderer) SubmitQueue(queue *CommandQueue) {
 		case CommandKindBindPipeline:
 			command := PopCommand[CommandBindPipeline](queue)
 			r.executeCommandBindPipeline(command)
-		case CommandKindUniform1f:
-			command := PopCommand[CommandUniform1f](queue)
-			r.executeCommandUniform1f(command)
-		case CommandKindUniform3f:
-			command := PopCommand[CommandUniform3f](queue)
-			r.executeCommandUniform3f(command)
-		case CommandKindUniform4f:
-			command := PopCommand[CommandUniform4f](queue)
-			r.executeCommandUniform4f(command)
 		case CommandKindUniformBufferUnit:
 			command := PopCommand[CommandUniformBufferUnit](queue)
 			r.executeCommandUniformBufferUnit(command)
@@ -425,35 +416,6 @@ func (r *Renderer) executeCommandBindVertexArray(command CommandBindVertexArray)
 	vertexArray := vertexArrays.Get(command.VertexArrayID)
 	wasmgl.BindVertexArray(vertexArray.raw)
 	r.indexType = wasmgl.GLenum(command.IndexFormat)
-}
-
-func (r *Renderer) executeCommandUniform1f(command CommandUniform1f) {
-	location := locations.Get(uint32(command.Location))
-	wasmgl.Uniform1f(
-		location.raw,
-		command.Value,
-	)
-}
-
-func (r *Renderer) executeCommandUniform3f(command CommandUniform3f) {
-	location := locations.Get(uint32(command.Location))
-	wasmgl.Uniform3f(
-		location.raw,
-		command.Values[0],
-		command.Values[1],
-		command.Values[2],
-	)
-}
-
-func (r *Renderer) executeCommandUniform4f(command CommandUniform4f) {
-	location := locations.Get(uint32(command.Location))
-	wasmgl.Uniform4f(
-		location.raw,
-		command.Values[0],
-		command.Values[1],
-		command.Values[2],
-		command.Values[3],
-	)
 }
 
 func (r *Renderer) executeCommandUniformBufferUnit(command CommandUniformBufferUnit) {
