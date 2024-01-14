@@ -23,8 +23,7 @@ func NewProgram(info ProgramInfo) *Program {
 	defer fragmentShader.Release()
 
 	program := &Program{
-		raw:      wasmgl.CreateProgram(),
-		uniforms: make(map[*UniformLocation]struct{}),
+		raw: wasmgl.CreateProgram(),
 	}
 
 	wasmgl.AttachShader(program.raw, vertexShader.raw)
@@ -61,26 +60,11 @@ func NewProgram(info ProgramInfo) *Program {
 
 type Program struct {
 	render.ProgramObject
-	id       uint32
-	raw      wasmgl.Program
-	uniforms map[*UniformLocation]struct{}
-}
-
-// Deprecated: To be removed.
-func (p *Program) UniformLocation(name string) render.UniformLocation {
-	result := &UniformLocation{
-		raw: wasmgl.GetUniformLocation(p.raw, name),
-	}
-	result.id = int32(locations.Allocate(result))
-	p.uniforms[result] = struct{}{}
-	return result
+	id  uint32
+	raw wasmgl.Program
 }
 
 func (p *Program) Release() {
-	for uniform := range p.uniforms {
-		locations.Release(uint32(uniform.id))
-	}
-	p.uniforms = nil
 	programs.Release(p.id)
 	wasmgl.DeleteProgram(p.raw)
 	p.raw = wasmgl.NilProgram
@@ -102,9 +86,4 @@ func (p *Program) isLinkSuccessful() bool {
 
 func (p *Program) getInfoLog() string {
 	return wasmgl.GetProgramInfoLog(p.raw)
-}
-
-type UniformLocation struct {
-	id  int32
-	raw wasmgl.UniformLocation
 }
