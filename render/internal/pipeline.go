@@ -24,16 +24,14 @@ func NewPipeline(info render.PipelineInfo) *Pipeline {
 		pipeline.Topology.Topology = wasmgl.POINTS
 	case render.TopologyLineStrip:
 		pipeline.Topology.Topology = wasmgl.LINE_STRIP
-	case render.TopologyLineLoop:
-		pipeline.Topology.Topology = wasmgl.LINE_LOOP
-	case render.TopologyLines:
+	case render.TopologyLineList:
 		pipeline.Topology.Topology = wasmgl.LINES
+	case render.TopologyTriangleList:
+		pipeline.Topology.Topology = wasmgl.TRIANGLES
 	case render.TopologyTriangleStrip:
 		pipeline.Topology.Topology = wasmgl.TRIANGLE_STRIP
 	case render.TopologyTriangleFan:
 		pipeline.Topology.Topology = wasmgl.TRIANGLE_FAN
-	case render.TopologyTriangles:
-		pipeline.Topology.Topology = wasmgl.TRIANGLES
 	}
 
 	switch info.Culling {
@@ -106,7 +104,7 @@ func NewPipeline(info render.PipelineInfo) *Pipeline {
 }
 
 type Pipeline struct {
-	render.PipelineObject
+	render.PipelineMarker
 	ProgramID        uint32
 	Topology         CommandTopology
 	CullTest         CommandCullTest

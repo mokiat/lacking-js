@@ -12,7 +12,8 @@ func NewFence() *Fence {
 }
 
 type Fence struct {
-	render.FenceObject
+	render.FenceMarker
+
 	raw wasmgl.Sync
 }
 
@@ -23,11 +24,11 @@ func (f *Fence) Status() render.FenceStatus {
 	case wasmgl.UNSIGNALED:
 		return render.FenceStatusNotReady
 	default:
-		return render.FenceStatusDeviceLost
+		return render.FenceStatusNotReady
 	}
 }
 
-func (f *Fence) Delete() {
+func (f *Fence) Release() {
 	wasmgl.DeleteSync(f.raw)
 	f.raw = wasmgl.NilSync
 }

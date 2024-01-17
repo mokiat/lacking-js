@@ -46,15 +46,10 @@ func newBuffer(info render.BufferInfo, kind wasmgl.GLenum) *Buffer {
 }
 
 type Buffer struct {
-	render.BufferObject
+	render.BufferMarker
 	id   uint32
 	raw  wasmgl.Buffer
 	kind wasmgl.GLenum
-}
-
-func (b *Buffer) Fetch(info render.BufferFetchInfo) {
-	wasmgl.BindBuffer(b.kind, b.raw)
-	wasmgl.GetBufferSubData(b.kind, wasmgl.GLintptr(info.Offset), info.Target)
 }
 
 func (b *Buffer) Release() {

@@ -59,7 +59,7 @@ func NewProgram(info ProgramInfo) *Program {
 }
 
 type Program struct {
-	render.ProgramObject
+	render.ProgramMarker
 	id  uint32
 	raw wasmgl.Program
 }
