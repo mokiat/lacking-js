@@ -56,7 +56,7 @@ func init() {
 }
 
 type Framebuffer struct {
-	render.FramebufferObject
+	render.FramebufferMarker
 	id                uint32
 	raw               wasmgl.Framebuffer
 	activeDrawBuffers [4]bool

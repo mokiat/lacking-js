@@ -41,7 +41,7 @@ func NewDepthTexture2D(info render.DepthTexture2DInfo) *Texture {
 	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_WRAP_S, wasmgl.CLAMP_TO_EDGE)
 	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_WRAP_T, wasmgl.CLAMP_TO_EDGE)
 
-	if info.ClippedValue != nil {
+	if info.ClippedValue.Specified {
 		wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_MIN_FILTER, wasmgl.LINEAR)
 		wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_MAG_FILTER, wasmgl.LINEAR)
 	} else {
@@ -143,7 +143,7 @@ func NewColorTextureCube(info render.ColorTextureCubeInfo) *Texture {
 }
 
 type Texture struct {
-	render.TextureObject
+	render.TextureMarker
 	id   uint32
 	raw  wasmgl.Texture
 	kind wasmgl.GLenum
