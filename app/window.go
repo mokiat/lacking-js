@@ -59,7 +59,7 @@ func Run(cfg *Config, controller app.Controller) error {
 		}
 	}
 
-	l := newLoop(htmlDocument, htmlCanvas, controller)
+	l := newLoop(htmlDocument, htmlCanvas, controller, cfg.audioEnabled)
 	if cfg.cursor != nil {
 		cursor := l.CreateCursor(*cfg.cursor)
 		defer cursor.Destroy()
