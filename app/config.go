@@ -6,7 +6,8 @@ import "github.com/mokiat/lacking/app"
 // required settings.
 func NewConfig(canvasID string) *Config {
 	return &Config{
-		canvasID: canvasID,
+		canvasID:     canvasID,
+		audioEnabled: true,
 	}
 }
 
@@ -20,8 +21,10 @@ type Config struct {
 	cursorVisible bool
 	cursor        *app.CursorDefinition
 	glExtensions  []string
+	audioEnabled  bool
 }
 
+// Title returns the title of the application window.
 func (c *Config) Title() string {
 	if c.title == nil {
 		return ""
@@ -29,10 +32,12 @@ func (c *Config) Title() string {
 	return *c.title
 }
 
+// SetTitle sets the title of the application window.
 func (c *Config) SetTitle(title string) {
 	c.title = &title
 }
 
+// Width returns the width of the application window.
 func (c *Config) Width() int {
 	if c.width == nil {
 		return 0
@@ -40,10 +45,12 @@ func (c *Config) Width() int {
 	return *c.width
 }
 
+// SetWidth sets the width of the application window.
 func (c *Config) SetWidth(width int) {
 	c.width = &width
 }
 
+// Height returns the height of the application window.
 func (c *Config) Height() int {
 	if c.height == nil {
 		return 0
@@ -51,14 +58,19 @@ func (c *Config) Height() int {
 	return *c.height
 }
 
+// SetHeight sets the height of the application window.
 func (c *Config) SetHeight(height int) {
 	c.height = &height
 }
 
+// Fullscreen returns whether the application window will be
+// displayed in fullscreen mode.
 func (c *Config) Fullscreen() bool {
 	return c.fullscreen
 }
 
+// SetFullscreen specifies whether the application window should
+// be displayed in fullscreen mode.
 func (c *Config) SetFullscreen(fullscreen bool) {
 	c.fullscreen = fullscreen
 }
@@ -86,6 +98,19 @@ func (c *Config) SetCursor(definition *app.CursorDefinition) {
 	c.cursor = definition
 }
 
+// AddGLExtension adds a new OpenGL extension that should be
+// enabled when creating the OpenGL context.
 func (c *Config) AddGLExtension(name string) {
 	c.glExtensions = append(c.glExtensions, name)
+}
+
+// AudioEnabled returns whether audio is enabled for this application.
+func (c *Config) AudioEnabled() bool {
+	return c.audioEnabled
+}
+
+// SetAudioEnabled specifies whether audio should be enabled for this
+// application.
+func (c *Config) SetAudioEnabled(enabled bool) {
+	c.audioEnabled = enabled
 }

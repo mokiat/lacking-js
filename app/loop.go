@@ -21,14 +21,18 @@ const (
 	taskProcessingTimeout = 30 * time.Millisecond
 )
 
-func newLoop(htmlDocument, htmlCanvas js.Value, controller app.Controller) *loop {
+func newLoop(htmlDocument, htmlCanvas js.Value, controller app.Controller, audioEnabled bool) *loop {
+	var audioAPI *jsaudio.API
+	if audioEnabled {
+		audioAPI = jsaudio.NewAPI()
+	}
 	return &loop{
 		platform:     newPlatform(),
 		htmlDocument: htmlDocument,
 		htmlCanvas:   htmlCanvas,
 		controller:   controller,
 		renderAPI:    jsrender.NewAPI(),
-		audioAPI:     jsaudio.NewAPI(),
+		audioAPI:     audioAPI,
 		tasks:        make(chan func(), taskQueueSize),
 		gamepads: [4]*Gamepad{
 			newGamepad(0),
@@ -63,7 +67,9 @@ type loop struct {
 }
 
 func (l *loop) Run() error {
-	defer l.audioAPI.Close()
+	if l.audioAPI != nil {
+		defer l.audioAPI.Close()
+	}
 
 	l.controller.OnCreate(l)
 	defer l.controller.OnDestroy(l)
@@ -291,6 +297,9 @@ func (l *loop) RenderAPI() render.API {
 }
 
 func (l *loop) AudioAPI() audio.API {
+	if l.audioAPI == nil {
+		return audio.NewNopAPI()
+	}
 	return l.audioAPI
 }
 
