@@ -92,6 +92,7 @@ func newPostprocessingShaderSet(cfg graphics.PostprocessingShaderConfig) rendera
 	var settings struct {
 		UseReinhard    bool
 		UseExponential bool
+		UseBloom       bool
 	}
 	switch cfg.ToneMapping {
 	case graphics.ReinhardToneMapping:
@@ -101,6 +102,7 @@ func newPostprocessingShaderSet(cfg graphics.PostprocessingShaderConfig) rendera
 	default:
 		panic(fmt.Errorf("unknown tone mapping mode: %s", cfg.ToneMapping))
 	}
+	settings.UseBloom = cfg.Bloom
 	return render.ProgramCode{
 		VertexCode:   construct("postprocess.vert.glsl", settings),
 		FragmentCode: construct("postprocess.frag.glsl", settings),
