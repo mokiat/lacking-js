@@ -8,12 +8,12 @@ import (
 func NewColorTexture2D(info render.ColorTexture2DInfo) *Texture {
 	raw := wasmgl.CreateTexture()
 	wasmgl.BindTexture(wasmgl.TEXTURE_2D, raw)
-	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_WRAP_S, glWrap(info.Wrapping))
-	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_WRAP_T, glWrap(info.Wrapping))
-	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_MIN_FILTER, glFilter(info.Filtering, info.Mipmapping))
-	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_MAG_FILTER, glFilter(info.Filtering, false))
+	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_WRAP_S, wasmgl.CLAMP_TO_EDGE)
+	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_WRAP_T, wasmgl.CLAMP_TO_EDGE)
+	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_MIN_FILTER, wasmgl.NEAREST)
+	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_MAG_FILTER, wasmgl.NEAREST)
 
-	levels := glMipmapLevels(info.Width, info.Height, info.Mipmapping)
+	levels := glMipmapLevels(info.Width, info.Height, info.GenerateMipmaps)
 	internalFormat := glInternalFormat(info.Format, info.GammaCorrection)
 	wasmgl.TexStorage2D(wasmgl.TEXTURE_2D, levels, internalFormat, wasmgl.GLsizei(info.Width), wasmgl.GLsizei(info.Height))
 
@@ -21,8 +21,7 @@ func NewColorTexture2D(info render.ColorTexture2DInfo) *Texture {
 		dataFormat := glDataFormat(info.Format)
 		componentType := glDataComponentType(info.Format)
 		wasmgl.TexSubImage2D(wasmgl.TEXTURE_2D, 0, 0, 0, wasmgl.GLsizei(info.Width), wasmgl.GLsizei(info.Height), dataFormat, componentType, info.Data)
-
-		if info.Mipmapping {
+		if info.GenerateMipmaps {
 			wasmgl.GenerateMipmap(wasmgl.TEXTURE_2D)
 		}
 	}
@@ -40,14 +39,8 @@ func NewDepthTexture2D(info render.DepthTexture2DInfo) *Texture {
 	wasmgl.BindTexture(wasmgl.TEXTURE_2D, raw)
 	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_WRAP_S, wasmgl.CLAMP_TO_EDGE)
 	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_WRAP_T, wasmgl.CLAMP_TO_EDGE)
-
-	if info.ClippedValue.Specified {
-		wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_MIN_FILTER, wasmgl.LINEAR)
-		wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_MAG_FILTER, wasmgl.LINEAR)
-	} else {
-		wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_MIN_FILTER, wasmgl.NEAREST)
-		wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_MAG_FILTER, wasmgl.NEAREST)
-	}
+	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_MIN_FILTER, wasmgl.NEAREST)
+	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_MAG_FILTER, wasmgl.NEAREST)
 	if info.Comparable {
 		wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_COMPARE_MODE, wasmgl.COMPARE_REF_TO_TEXTURE)
 		wasmgl.TexStorage2D(wasmgl.TEXTURE_2D, 1, wasmgl.DEPTH_COMPONENT32F, wasmgl.GLsizei(info.Width), wasmgl.GLsizei(info.Height))
@@ -101,10 +94,10 @@ func NewColorTextureCube(info render.ColorTextureCubeInfo) *Texture {
 	wasmgl.BindTexture(wasmgl.TEXTURE_CUBE_MAP, raw)
 	wasmgl.TexParameteri(wasmgl.TEXTURE_CUBE_MAP, wasmgl.TEXTURE_WRAP_S, wasmgl.CLAMP_TO_EDGE)
 	wasmgl.TexParameteri(wasmgl.TEXTURE_CUBE_MAP, wasmgl.TEXTURE_WRAP_T, wasmgl.CLAMP_TO_EDGE)
-	wasmgl.TexParameteri(wasmgl.TEXTURE_CUBE_MAP, wasmgl.TEXTURE_MIN_FILTER, glFilter(info.Filtering, info.Mipmapping))
-	wasmgl.TexParameteri(wasmgl.TEXTURE_CUBE_MAP, wasmgl.TEXTURE_MAG_FILTER, glFilter(info.Filtering, false)) // no mipmaps when magnification
+	wasmgl.TexParameteri(wasmgl.TEXTURE_CUBE_MAP, wasmgl.TEXTURE_MIN_FILTER, wasmgl.NEAREST)
+	wasmgl.TexParameteri(wasmgl.TEXTURE_CUBE_MAP, wasmgl.TEXTURE_MAG_FILTER, wasmgl.NEAREST)
 
-	levels := glMipmapLevels(info.Dimension, info.Dimension, info.Mipmapping)
+	levels := glMipmapLevels(info.Dimension, info.Dimension, info.GenerateMipmaps)
 	internalFormat := glInternalFormat(info.Format, info.GammaCorrection)
 	wasmgl.TexStorage2D(wasmgl.TEXTURE_CUBE_MAP, levels, internalFormat, wasmgl.GLsizei(info.Dimension), wasmgl.GLsizei(info.Dimension))
 
@@ -156,6 +149,38 @@ func (t *Texture) Release() {
 	t.id = 0
 }
 
+func NewSampler(info render.SamplerInfo) *Sampler {
+	raw := wasmgl.CreateSampler()
+	wasmgl.SamplerParameteri(raw, wasmgl.TEXTURE_WRAP_S, glWrap(info.Wrapping))
+	wasmgl.SamplerParameteri(raw, wasmgl.TEXTURE_WRAP_T, glWrap(info.Wrapping))
+	wasmgl.SamplerParameteri(raw, wasmgl.TEXTURE_WRAP_R, glWrap(info.Wrapping))
+	wasmgl.SamplerParameteri(raw, wasmgl.TEXTURE_MIN_FILTER, glFilter(info.Filtering, info.Mipmapping))
+	wasmgl.SamplerParameteri(raw, wasmgl.TEXTURE_MAG_FILTER, glFilter(info.Filtering, false)) // no mipmaps when magnification
+	if info.Comparison.Specified {
+		wasmgl.SamplerParameteri(raw, wasmgl.TEXTURE_COMPARE_MODE, wasmgl.COMPARE_REF_TO_TEXTURE)
+		wasmgl.SamplerParameteri(raw, wasmgl.TEXTURE_COMPARE_FUNC, int32(glEnumFromComparison(info.Comparison.Value)))
+	}
+
+	result := &Sampler{
+		raw: raw,
+	}
+	result.id = samplers.Allocate(result)
+	return result
+}
+
+type Sampler struct {
+	render.SamplerMarker
+	id  uint32
+	raw wasmgl.Sampler
+}
+
+func (s *Sampler) Release() {
+	samplers.Release(s.id)
+	wasmgl.DeleteSampler(s.raw)
+	s.raw = wasmgl.NilSampler
+	s.id = 0
+}
+
 func glWrap(wrap render.WrapMode) wasmgl.GLint {
 	switch wrap {
 	case render.WrapModeClamp:
@@ -186,7 +211,7 @@ func glFilter(filter render.FilterMode, mipmaps bool) wasmgl.GLint {
 	}
 }
 
-func glMipmapLevels(width, height int, mipmapping bool) wasmgl.GLsizei {
+func glMipmapLevels(width, height uint32, mipmapping bool) wasmgl.GLsizei {
 	if !mipmapping {
 		return 1
 	}

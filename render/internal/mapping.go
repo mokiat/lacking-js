@@ -31,6 +31,7 @@ var (
 	framebuffers = newMapper[*Framebuffer]()
 	programs     = newMapper[*Program]()
 	textures     = newMapper[*Texture]()
+	samplers     = newMapper[*Sampler]()
 	buffers      = newMapper[*Buffer]()
 	vertexArrays = newMapper[*VertexArray]()
 )
