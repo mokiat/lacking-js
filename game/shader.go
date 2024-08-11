@@ -6,7 +6,6 @@ import (
 	"github.com/mokiat/lacking-js/internal/shader"
 	"github.com/mokiat/lacking-js/render"
 	"github.com/mokiat/lacking/game/graphics"
-	"github.com/mokiat/lacking/game/graphics/shading"
 	renderapi "github.com/mokiat/lacking/render"
 )
 
@@ -17,63 +16,15 @@ var construct = shader.Load(
 
 func NewShaderCollection() graphics.ShaderCollection {
 	return graphics.ShaderCollection{
-		BuildGeometry: func(meshConfig graphics.MeshConfig, fn shading.GeometryFunc) renderapi.ProgramCode {
-			panic("not implemented")
-		},
-		BuildForward: func(meshConfig graphics.MeshConfig, fn shading.ForwardFunc) renderapi.ProgramCode {
-			panic("not implemented")
-		},
-		ShadowMappingSet:    newShadowMappingSet,
-		PBRGeometrySet:      newPBRGeometrySet,
-		DirectionalLightSet: newDirectionalLightShaderSet,
 		AmbientLightSet:     newAmbientLightShaderSet,
 		PointLightSet:       newPointLightShaderSet,
 		SpotLightSet:        newSpotLightShaderSet,
-		SkyboxSet:           newSkyboxShaderSet,
-		SkycolorSet:         newSkycolorShaderSet,
+		DirectionalLightSet: newDirectionalLightShaderSet,
 		DebugSet:            newDebugShaderSet,
 		ExposureSet:         newExposureShaderSet,
+		BloomDownsampleSet:  newBloomDownsampleShaderSet,
+		BloomBlurSet:        newBloomBlurShaderSet,
 		PostprocessingSet:   newPostprocessingShaderSet,
-	}
-}
-
-func newShadowMappingSet(cfg graphics.ShadowMappingShaderConfig) renderapi.ProgramCode {
-	var settings struct {
-		UseArmature bool
-	}
-	if cfg.HasArmature {
-		settings.UseArmature = true
-	}
-	return render.ProgramCode{
-		VertexCode:   construct("shadow.vert.glsl", settings),
-		FragmentCode: construct("shadow.frag.glsl", settings),
-	}
-}
-
-func newPBRGeometrySet(cfg graphics.PBRGeometryShaderConfig) renderapi.ProgramCode {
-	var settings struct {
-		UseArmature       bool
-		UseAlphaTest      bool
-		UseVertexColoring bool
-		UseTexturing      bool
-		UseAlbedoTexture  bool
-	}
-	if cfg.HasArmature {
-		settings.UseArmature = true
-	}
-	if cfg.HasAlphaTesting {
-		settings.UseAlphaTest = true
-	}
-	if cfg.HasVertexColors {
-		settings.UseVertexColoring = true
-	}
-	if cfg.HasAlbedoTexture {
-		settings.UseTexturing = true
-		settings.UseAlbedoTexture = true
-	}
-	return render.ProgramCode{
-		VertexCode:   construct("pbr_geometry.vert.glsl", settings),
-		FragmentCode: construct("pbr_geometry.frag.glsl", settings),
 	}
 }
 
@@ -109,20 +60,6 @@ func newDirectionalLightShaderSet() renderapi.ProgramCode {
 	}
 }
 
-func newSkyboxShaderSet() renderapi.ProgramCode {
-	return render.ProgramCode{
-		VertexCode:   construct("skybox.vert.glsl", struct{}{}),
-		FragmentCode: construct("skybox.frag.glsl", struct{}{}),
-	}
-}
-
-func newSkycolorShaderSet() renderapi.ProgramCode {
-	return render.ProgramCode{
-		VertexCode:   construct("skycolor.vert.glsl", struct{}{}),
-		FragmentCode: construct("skycolor.frag.glsl", struct{}{}),
-	}
-}
-
 func newDebugShaderSet() renderapi.ProgramCode {
 	return render.ProgramCode{
 		VertexCode:   construct("debug.vert.glsl", struct{}{}),
@@ -137,10 +74,25 @@ func newExposureShaderSet() renderapi.ProgramCode {
 	}
 }
 
+func newBloomDownsampleShaderSet() renderapi.ProgramCode {
+	return render.ProgramCode{
+		VertexCode:   construct("bloom_downsample.vert.glsl", struct{}{}),
+		FragmentCode: construct("bloom_downsample.frag.glsl", struct{}{}),
+	}
+}
+
+func newBloomBlurShaderSet() renderapi.ProgramCode {
+	return render.ProgramCode{
+		VertexCode:   construct("bloom_blur.vert.glsl", struct{}{}),
+		FragmentCode: construct("bloom_blur.frag.glsl", struct{}{}),
+	}
+}
+
 func newPostprocessingShaderSet(cfg graphics.PostprocessingShaderConfig) renderapi.ProgramCode {
 	var settings struct {
 		UseReinhard    bool
 		UseExponential bool
+		UseBloom       bool
 	}
 	switch cfg.ToneMapping {
 	case graphics.ReinhardToneMapping:
@@ -150,6 +102,7 @@ func newPostprocessingShaderSet(cfg graphics.PostprocessingShaderConfig) rendera
 	default:
 		panic(fmt.Errorf("unknown tone mapping mode: %s", cfg.ToneMapping))
 	}
+	settings.UseBloom = cfg.Bloom
 	return render.ProgramCode{
 		VertexCode:   construct("postprocess.vert.glsl", settings),
 		FragmentCode: construct("postprocess.frag.glsl", settings),

@@ -8,7 +8,7 @@ import (
 	"github.com/mokiat/wasmgl"
 )
 
-func NewCommandBuffer(initialCapacity int) *CommandBuffer {
+func NewCommandBuffer(initialCapacity uint) *CommandBuffer {
 	return &CommandBuffer{
 		data: make([]byte, max(1024, initialCapacity)),
 	}
@@ -142,7 +142,7 @@ func (b *CommandBuffer) BindPipeline(pipeline render.Pipeline) {
 	})
 }
 
-func (b *CommandBuffer) TextureUnit(index int, texture render.Texture) {
+func (b *CommandBuffer) TextureUnit(index uint, texture render.Texture) {
 	b.verifyIsRenderPass()
 	writeCommandChunk(b, CommandHeader{
 		Kind: CommandKindTextureUnit,
@@ -153,7 +153,22 @@ func (b *CommandBuffer) TextureUnit(index int, texture render.Texture) {
 	})
 }
 
-func (b *CommandBuffer) UniformBufferUnit(index int, buffer render.Buffer, offset, size int) {
+func (b *CommandBuffer) SamplerUnit(index uint, sampler render.Sampler) {
+	b.verifyIsRenderPass()
+	writeCommandChunk(b, CommandHeader{
+		Kind: CommandKindSamplerUnit,
+	})
+	samplerID := uint32(0) // disable
+	if sampler != nil {
+		samplerID = sampler.(*Sampler).id
+	}
+	writeCommandChunk(b, CommandSamplerUnit{
+		Index:     uint32(index),
+		SamplerID: samplerID,
+	})
+}
+
+func (b *CommandBuffer) UniformBufferUnit(index uint, buffer render.Buffer, offset, size uint32) {
 	b.verifyIsRenderPass()
 	writeCommandChunk(b, CommandHeader{
 		Kind: CommandKindUniformBufferUnit,
@@ -161,12 +176,12 @@ func (b *CommandBuffer) UniformBufferUnit(index int, buffer render.Buffer, offse
 	writeCommandChunk(b, CommandUniformBufferUnit{
 		Index:    uint32(index),
 		BufferID: buffer.(*Buffer).id,
-		Offset:   uint32(offset),
-		Size:     uint32(size),
+		Offset:   offset,
+		Size:     size,
 	})
 }
 
-func (b *CommandBuffer) Draw(vertexOffset, vertexCount, instanceCount int) {
+func (b *CommandBuffer) Draw(vertexOffset, vertexCount, instanceCount uint32) {
 	b.verifyIsRenderPass()
 	writeCommandChunk(b, CommandHeader{
 		Kind: CommandKindDraw,
@@ -178,7 +193,7 @@ func (b *CommandBuffer) Draw(vertexOffset, vertexCount, instanceCount int) {
 	})
 }
 
-func (b *CommandBuffer) DrawIndexed(indexOffset, indexCount, instanceCount int) {
+func (b *CommandBuffer) DrawIndexed(indexOffset, indexCount, instanceCount uint32) {
 	b.verifyIsRenderPass()
 	writeCommandChunk(b, CommandHeader{
 		Kind: CommandKindDrawIndexed,

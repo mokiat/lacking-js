@@ -92,14 +92,14 @@ func (q *Queue) Invalidate() {
 	q.invalidateAttachments = q.invalidateAttachments[:0]
 }
 
-func (q *Queue) WriteBuffer(buffer render.Buffer, offset int, data []byte) {
+func (q *Queue) WriteBuffer(buffer render.Buffer, offset uint32, data []byte) {
 	actualBuffer := buffer.(*Buffer)
 	wasmgl.BindBuffer(actualBuffer.kind, actualBuffer.raw)
 	wasmgl.BufferSubData(actualBuffer.kind, wasmgl.GLintptr(offset), data)
 	wasmgl.BindBuffer(actualBuffer.kind, wasmgl.NilBuffer)
 }
 
-func (q *Queue) ReadBuffer(buffer render.Buffer, offset int, target []byte) {
+func (q *Queue) ReadBuffer(buffer render.Buffer, offset uint32, target []byte) {
 	actualBuffer := buffer.(*Buffer)
 	wasmgl.BindBuffer(actualBuffer.kind, actualBuffer.raw)
 	wasmgl.GetBufferSubData(actualBuffer.kind, wasmgl.GLintptr(offset), target)
@@ -129,6 +129,9 @@ func (q *Queue) Submit(commands render.CommandBuffer) {
 		case CommandKindTextureUnit:
 			command := readCommandChunk[CommandTextureUnit](commandBuffer)
 			q.executeCommandTextureUnit(command)
+		case CommandKindSamplerUnit:
+			command := readCommandChunk[CommandSamplerUnit](commandBuffer)
+			q.executeCommandSamplerUnit(command)
 		case CommandKindUniformBufferUnit:
 			command := readCommandChunk[CommandUniformBufferUnit](commandBuffer)
 			q.executeCommandUniformBufferUnit(command)
@@ -249,7 +252,7 @@ func (q *Queue) executeCommandBeginRenderPass(command CommandBeginRenderPass) {
 	q.invalidateAttachments = q.invalidateAttachments[:0]
 
 	for i, attachment := range command.Colors {
-		if intFramebuffer.activeDrawBuffers[i] && (CommandStoreOperationToRender(attachment.StoreOp) == render.StoreOperationDontCare) {
+		if intFramebuffer.activeDrawBuffers[i] && (CommandStoreOperationToRender(attachment.StoreOp) == render.StoreOperationDiscard) {
 			if isDefaultFramebuffer {
 				if i == 0 {
 					q.invalidateAttachments = append(q.invalidateAttachments, wasmgl.COLOR)
@@ -260,8 +263,8 @@ func (q *Queue) executeCommandBeginRenderPass(command CommandBeginRenderPass) {
 		}
 	}
 
-	invalidateDepth := CommandStoreOperationToRender(command.DepthStoreOp) == render.StoreOperationDontCare
-	invalidateStencil := CommandStoreOperationToRender(command.StencilStoreOp) == render.StoreOperationDontCare
+	invalidateDepth := CommandStoreOperationToRender(command.DepthStoreOp) == render.StoreOperationDiscard
+	invalidateStencil := CommandStoreOperationToRender(command.StencilStoreOp) == render.StoreOperationDiscard
 
 	if invalidateDepth && invalidateStencil && !isDefaultFramebuffer {
 		q.invalidateAttachments = append(q.invalidateAttachments, wasmgl.DEPTH_STENCIL_ATTACHMENT)
@@ -283,7 +286,7 @@ func (q *Queue) executeCommandBeginRenderPass(command CommandBeginRenderPass) {
 	}
 }
 
-func (q *Queue) executeCommandEndRenderPass(command CommandEndRenderPass) {
+func (q *Queue) executeCommandEndRenderPass(_ CommandEndRenderPass) {
 	if len(q.invalidateAttachments) > 0 {
 		wasmgl.InvalidateFramebuffer(wasmgl.FRAMEBUFFER, q.invalidateAttachments)
 	}
@@ -601,6 +604,15 @@ func (q *Queue) executeCommandTextureUnit(command CommandTextureUnit) {
 	texture := textures.Get(command.TextureID)
 	wasmgl.ActiveTexture(wasmgl.TEXTURE0 + command.Index)
 	wasmgl.BindTexture(texture.kind, texture.raw)
+}
+
+func (q *Queue) executeCommandSamplerUnit(command CommandSamplerUnit) {
+	if command.SamplerID != 0 {
+		sampler := samplers.Get(command.SamplerID)
+		wasmgl.BindSampler(command.Index, sampler.raw)
+	} else {
+		wasmgl.BindSampler(command.Index, wasmgl.NilSampler)
+	}
 }
 
 func (q *Queue) executeCommandUniformBufferUnit(command CommandUniformBufferUnit) {

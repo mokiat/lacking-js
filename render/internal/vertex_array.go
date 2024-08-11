@@ -158,9 +158,9 @@ func glAttribParams(format render.VertexAttributeFormat) (wasmgl.GLint, wasmgl.G
 
 func glIndexFormat(format render.IndexFormat) wasmgl.GLenum {
 	switch format {
-	case render.IndexFormatUnsignedShort:
+	case render.IndexFormatUnsignedU16:
 		return wasmgl.UNSIGNED_SHORT
-	case render.IndexFormatUnsignedInt:
+	case render.IndexFormatUnsignedU32:
 		return wasmgl.UNSIGNED_INT
 	default:
 		panic(fmt.Errorf("unknown index format: %d", format))
