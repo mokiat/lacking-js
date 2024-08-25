@@ -29,6 +29,9 @@ func NewColorTexture2D(info render.ColorTexture2DInfo) *Texture {
 	result := &Texture{
 		raw:  raw,
 		kind: wasmgl.TEXTURE_2D,
+
+		width:  info.Width,
+		height: info.Height,
 	}
 	result.id = textures.Allocate(result)
 	return result
@@ -51,6 +54,9 @@ func NewDepthTexture2D(info render.DepthTexture2DInfo) *Texture {
 	result := &Texture{
 		raw:  raw,
 		kind: wasmgl.TEXTURE_2D,
+
+		width:  info.Width,
+		height: info.Height,
 	}
 	result.id = textures.Allocate(result)
 	return result
@@ -68,6 +74,9 @@ func NewStencilTexture2D(info render.StencilTexture2DInfo) *Texture {
 	result := &Texture{
 		raw:  raw,
 		kind: wasmgl.TEXTURE_2D,
+
+		width:  info.Width,
+		height: info.Height,
 	}
 	result.id = textures.Allocate(result)
 	return result
@@ -84,6 +93,9 @@ func NewDepthStencilTexture2D(info render.DepthStencilTexture2DInfo) *Texture {
 	result := &Texture{
 		raw:  raw,
 		kind: wasmgl.TEXTURE_2D,
+
+		width:  info.Width,
+		height: info.Height,
 	}
 	result.id = textures.Allocate(result)
 	return result
@@ -130,6 +142,10 @@ func NewColorTextureCube(info render.ColorTextureCubeInfo) *Texture {
 	result := &Texture{
 		raw:  raw,
 		kind: wasmgl.TEXTURE_CUBE_MAP,
+
+		width:  info.Dimension,
+		height: info.Dimension,
+		depth:  info.Dimension,
 	}
 	result.id = textures.Allocate(result)
 	return result
@@ -140,6 +156,22 @@ type Texture struct {
 	id   uint32
 	raw  wasmgl.Texture
 	kind wasmgl.GLenum
+
+	width  uint32
+	height uint32
+	depth  uint32
+}
+
+func (t *Texture) Width() uint32 {
+	return t.width
+}
+
+func (t *Texture) Height() uint32 {
+	return t.height
+}
+
+func (t *Texture) Depth() uint32 {
+	return t.depth
 }
 
 func (t *Texture) Release() {
