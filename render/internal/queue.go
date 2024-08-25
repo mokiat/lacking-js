@@ -123,6 +123,9 @@ func (q *Queue) Submit(commands render.CommandBuffer) {
 		case CommandKindEndRenderPass:
 			command := readCommandChunk[CommandEndRenderPass](commandBuffer)
 			q.executeCommandEndRenderPass(command)
+		case CommandKindSetViewport:
+			command := readCommandChunk[CommandSetViewport](commandBuffer)
+			q.executeCommandSetViewport(command)
 		case CommandKindBindPipeline:
 			command := readCommandChunk[CommandBindPipeline](commandBuffer)
 			q.executeCommandBindPipeline(command)
@@ -290,6 +293,15 @@ func (q *Queue) executeCommandEndRenderPass(_ CommandEndRenderPass) {
 	if len(q.invalidateAttachments) > 0 {
 		wasmgl.InvalidateFramebuffer(wasmgl.FRAMEBUFFER, q.invalidateAttachments)
 	}
+}
+
+func (q *Queue) executeCommandSetViewport(command CommandSetViewport) {
+	wasmgl.Viewport(
+		command.X,
+		command.Y,
+		command.Width,
+		command.Height,
+	)
 }
 
 func (q *Queue) executeCommandBindPipeline(command CommandBindPipeline) {
