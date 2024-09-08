@@ -11,23 +11,52 @@ func NewFramebuffer(info render.FramebufferInfo) *Framebuffer {
 
 	var activeDrawBuffers [4]bool
 	var drawBuffers []wasmgl.GLenum
-	for i, attachment := range info.ColorAttachments {
-		if colorAttachment, ok := attachment.(*Texture); ok {
-			attachmentID := wasmgl.COLOR_ATTACHMENT0 + wasmgl.GLenum(i)
-			wasmgl.FramebufferTexture2D(wasmgl.FRAMEBUFFER, attachmentID, wasmgl.TEXTURE_2D, colorAttachment.raw, 0)
-			drawBuffers = append(drawBuffers, attachmentID)
-			activeDrawBuffers[i] = true
+	for i, colorAttachment := range info.ColorAttachments {
+		if !colorAttachment.Specified {
+			continue
 		}
+		attachment := colorAttachment.Value
+		texture := attachment.Texture.(*Texture)
+		attachmentID := wasmgl.COLOR_ATTACHMENT0 + wasmgl.GLenum(i)
+		switch texture.kind {
+		case wasmgl.TEXTURE_2D_ARRAY:
+			wasmgl.FramebufferTextureLayer(wasmgl.FRAMEBUFFER, attachmentID, texture.raw, int32(attachment.MipmapLayer), int32(attachment.Depth))
+		default:
+			wasmgl.FramebufferTexture2D(wasmgl.FRAMEBUFFER, attachmentID, wasmgl.TEXTURE_2D, texture.raw, int32(attachment.MipmapLayer))
+		}
+		drawBuffers = append(drawBuffers, attachmentID)
+		activeDrawBuffers[i] = true
 	}
 
-	if depthStencilAttachment, ok := info.DepthStencilAttachment.(*Texture); ok {
-		wasmgl.FramebufferTexture2D(wasmgl.FRAMEBUFFER, wasmgl.DEPTH_STENCIL_ATTACHMENT, wasmgl.TEXTURE_2D, depthStencilAttachment.raw, 0)
-	} else {
-		if depthAttachment, ok := info.DepthAttachment.(*Texture); ok {
-			wasmgl.FramebufferTexture2D(wasmgl.FRAMEBUFFER, wasmgl.DEPTH_ATTACHMENT, wasmgl.TEXTURE_2D, depthAttachment.raw, 0)
+	if info.DepthStencilAttachment.Specified {
+		attachment := info.DepthStencilAttachment.Value
+		texture := attachment.Texture.(*Texture)
+		switch texture.kind {
+		case wasmgl.TEXTURE_2D_ARRAY:
+			wasmgl.FramebufferTextureLayer(wasmgl.FRAMEBUFFER, wasmgl.DEPTH_STENCIL_ATTACHMENT, texture.raw, int32(attachment.MipmapLayer), int32(attachment.Depth))
+		default:
+			wasmgl.FramebufferTexture2D(wasmgl.FRAMEBUFFER, wasmgl.DEPTH_STENCIL_ATTACHMENT, wasmgl.TEXTURE_2D, texture.raw, int32(attachment.MipmapLayer))
 		}
-		if stencilAttachment, ok := info.StencilAttachment.(*Texture); ok {
-			wasmgl.FramebufferTexture2D(wasmgl.FRAMEBUFFER, wasmgl.STENCIL_ATTACHMENT, wasmgl.TEXTURE_2D, stencilAttachment.raw, 0)
+	} else {
+		if info.DepthAttachment.Specified {
+			attachment := info.DepthAttachment.Value
+			texture := attachment.Texture.(*Texture)
+			switch texture.kind {
+			case wasmgl.TEXTURE_2D_ARRAY:
+				wasmgl.FramebufferTextureLayer(wasmgl.FRAMEBUFFER, wasmgl.DEPTH_ATTACHMENT, texture.raw, int32(attachment.MipmapLayer), int32(attachment.Depth))
+			default:
+				wasmgl.FramebufferTexture2D(wasmgl.FRAMEBUFFER, wasmgl.DEPTH_ATTACHMENT, wasmgl.TEXTURE_2D, texture.raw, int32(attachment.MipmapLayer))
+			}
+		}
+		if info.StencilAttachment.Specified {
+			attachment := info.StencilAttachment.Value
+			texture := attachment.Texture.(*Texture)
+			switch texture.kind {
+			case wasmgl.TEXTURE_2D_ARRAY:
+				wasmgl.FramebufferTextureLayer(wasmgl.FRAMEBUFFER, wasmgl.STENCIL_ATTACHMENT, texture.raw, int32(attachment.MipmapLayer), int32(attachment.Depth))
+			default:
+				wasmgl.FramebufferTexture2D(wasmgl.FRAMEBUFFER, wasmgl.STENCIL_ATTACHMENT, wasmgl.TEXTURE_2D, texture.raw, int32(attachment.MipmapLayer))
+			}
 		}
 	}
 
