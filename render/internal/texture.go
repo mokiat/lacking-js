@@ -132,6 +132,7 @@ func NewColorTextureCube(info render.ColorTextureCubeInfo) *Texture {
 	wasmgl.BindTexture(wasmgl.TEXTURE_CUBE_MAP, raw)
 	wasmgl.TexParameteri(wasmgl.TEXTURE_CUBE_MAP, wasmgl.TEXTURE_WRAP_S, wasmgl.CLAMP_TO_EDGE)
 	wasmgl.TexParameteri(wasmgl.TEXTURE_CUBE_MAP, wasmgl.TEXTURE_WRAP_T, wasmgl.CLAMP_TO_EDGE)
+	wasmgl.TexParameteri(wasmgl.TEXTURE_CUBE_MAP, wasmgl.TEXTURE_WRAP_R, wasmgl.CLAMP_TO_EDGE)
 	wasmgl.TexParameteri(wasmgl.TEXTURE_CUBE_MAP, wasmgl.TEXTURE_MIN_FILTER, wasmgl.NEAREST)
 	wasmgl.TexParameteri(wasmgl.TEXTURE_CUBE_MAP, wasmgl.TEXTURE_MAG_FILTER, wasmgl.NEAREST)
 
