@@ -8,6 +8,10 @@ import (
 )
 
 func NewVertexArray(info render.VertexArrayInfo) *VertexArray {
+	if glLogger.IsDebugEnabled() {
+		defer trackError("Error creating vertex array (%v)", info.Label)()
+	}
+
 	raw := wasmgl.CreateVertexArray()
 	wasmgl.BindVertexArray(raw)
 	for _, attribute := range info.Attributes {
@@ -29,6 +33,7 @@ func NewVertexArray(info render.VertexArrayInfo) *VertexArray {
 	wasmgl.BindVertexArray(wasmgl.NilVertexArray)
 
 	result := &VertexArray{
+		label:       info.Label,
 		raw:         raw,
 		indexFormat: glIndexFormat(info.IndexFormat),
 	}
@@ -38,9 +43,15 @@ func NewVertexArray(info render.VertexArrayInfo) *VertexArray {
 
 type VertexArray struct {
 	render.VertexArrayMarker
+
+	label       string
 	id          uint32
 	raw         wasmgl.VertexArray
 	indexFormat wasmgl.GLenum
+}
+
+func (a *VertexArray) Label() string {
+	return a.label
 }
 
 func (a *VertexArray) Release() {

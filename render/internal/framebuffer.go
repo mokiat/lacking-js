@@ -6,6 +6,10 @@ import (
 )
 
 func NewFramebuffer(info render.FramebufferInfo) *Framebuffer {
+	if glLogger.IsDebugEnabled() {
+		defer trackError("Error creating framebuffer (%v)", info.Label)()
+	}
+
 	raw := wasmgl.CreateFramebuffer()
 	wasmgl.BindFramebuffer(wasmgl.FRAMEBUFFER, raw)
 
@@ -68,6 +72,7 @@ func NewFramebuffer(info render.FramebufferInfo) *Framebuffer {
 	}
 
 	result := &Framebuffer{
+		label:             info.Label,
 		raw:               raw,
 		activeDrawBuffers: activeDrawBuffers,
 	}
@@ -76,6 +81,7 @@ func NewFramebuffer(info render.FramebufferInfo) *Framebuffer {
 }
 
 var DefaultFramebuffer = &Framebuffer{
+	label:             "default",
 	raw:               wasmgl.NilFramebuffer,
 	activeDrawBuffers: [4]bool{true, false, false, false},
 }
@@ -86,9 +92,15 @@ func init() {
 
 type Framebuffer struct {
 	render.FramebufferMarker
+
+	label             string
 	id                uint32
 	raw               wasmgl.Framebuffer
 	activeDrawBuffers [4]bool
+}
+
+func (f *Framebuffer) Label() string {
+	return f.label
 }
 
 func (f *Framebuffer) Release() {

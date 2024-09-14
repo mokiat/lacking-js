@@ -23,7 +23,8 @@ func NewProgram(info ProgramInfo) *Program {
 	defer fragmentShader.Release()
 
 	program := &Program{
-		raw: wasmgl.CreateProgram(),
+		label: info.Label,
+		raw:   wasmgl.CreateProgram(),
 	}
 
 	wasmgl.AttachShader(program.raw, vertexShader.raw)
@@ -33,7 +34,7 @@ func NewProgram(info ProgramInfo) *Program {
 	defer wasmgl.DetachShader(program.raw, fragmentShader.raw)
 
 	if err := program.link(); err != nil {
-		logger.Error("Program link error: %v!", err)
+		logger.Error("Program (%v) link error: %v", info.Label, err)
 	}
 
 	if len(info.TextureBindings) > 0 {
@@ -60,8 +61,14 @@ func NewProgram(info ProgramInfo) *Program {
 
 type Program struct {
 	render.ProgramMarker
-	id  uint32
-	raw wasmgl.Program
+
+	label string
+	id    uint32
+	raw   wasmgl.Program
+}
+
+func (p *Program) Label() string {
+	return p.label
 }
 
 func (p *Program) Release() {

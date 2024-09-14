@@ -6,6 +6,10 @@ import (
 )
 
 func NewColorTexture2D(info render.ColorTexture2DInfo) *Texture {
+	if glLogger.IsDebugEnabled() {
+		defer trackError("Error creating color texture 2D (%v)", info.Label)()
+	}
+
 	raw := wasmgl.CreateTexture()
 	wasmgl.BindTexture(wasmgl.TEXTURE_2D, raw)
 	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_WRAP_S, wasmgl.CLAMP_TO_EDGE)
@@ -29,9 +33,9 @@ func NewColorTexture2D(info render.ColorTexture2DInfo) *Texture {
 	}
 
 	result := &Texture{
-		raw:  raw,
-		kind: wasmgl.TEXTURE_2D,
-
+		label:  info.Label,
+		raw:    raw,
+		kind:   wasmgl.TEXTURE_2D,
 		width:  info.Width,
 		height: info.Height,
 	}
@@ -40,6 +44,10 @@ func NewColorTexture2D(info render.ColorTexture2DInfo) *Texture {
 }
 
 func NewDepthTexture2D(info render.DepthTexture2DInfo) *Texture {
+	if glLogger.IsDebugEnabled() {
+		defer trackError("Error creating depth texture 2D (%v)", info.Label)()
+	}
+
 	raw := wasmgl.CreateTexture()
 	wasmgl.BindTexture(wasmgl.TEXTURE_2D, raw)
 	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_WRAP_S, wasmgl.CLAMP_TO_EDGE)
@@ -54,9 +62,9 @@ func NewDepthTexture2D(info render.DepthTexture2DInfo) *Texture {
 	}
 
 	result := &Texture{
-		raw:  raw,
-		kind: wasmgl.TEXTURE_2D,
-
+		label:  info.Label,
+		raw:    raw,
+		kind:   wasmgl.TEXTURE_2D,
 		width:  info.Width,
 		height: info.Height,
 	}
@@ -65,6 +73,10 @@ func NewDepthTexture2D(info render.DepthTexture2DInfo) *Texture {
 }
 
 func NewDepthTexture2DArray(info render.DepthTexture2DArrayInfo) *Texture {
+	if glLogger.IsDebugEnabled() {
+		defer trackError("Error creating array depth texture 2D (%v)", info.Label)()
+	}
+
 	raw := wasmgl.CreateTexture()
 	wasmgl.BindTexture(wasmgl.TEXTURE_2D_ARRAY, raw)
 	wasmgl.TexParameteri(wasmgl.TEXTURE_2D_ARRAY, wasmgl.TEXTURE_WRAP_S, wasmgl.CLAMP_TO_EDGE)
@@ -79,6 +91,7 @@ func NewDepthTexture2DArray(info render.DepthTexture2DArrayInfo) *Texture {
 	}
 
 	result := &Texture{
+		label:  info.Label,
 		raw:    raw,
 		kind:   wasmgl.TEXTURE_2D_ARRAY,
 		width:  info.Width,
@@ -89,6 +102,10 @@ func NewDepthTexture2DArray(info render.DepthTexture2DArrayInfo) *Texture {
 }
 
 func NewStencilTexture2D(info render.StencilTexture2DInfo) *Texture {
+	if glLogger.IsDebugEnabled() {
+		defer trackError("Error creating stencil texture 2D (%v)", info.Label)()
+	}
+
 	raw := wasmgl.CreateTexture()
 	wasmgl.BindTexture(wasmgl.TEXTURE_2D, raw)
 	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_WRAP_S, wasmgl.CLAMP_TO_EDGE)
@@ -98,9 +115,9 @@ func NewStencilTexture2D(info render.StencilTexture2DInfo) *Texture {
 	// NOTE: Firefox does not support wasmgl.STENCIL_INDEX8
 	wasmgl.TexStorage2D(wasmgl.TEXTURE_2D, 1, wasmgl.DEPTH24_STENCIL8, wasmgl.GLsizei(info.Width), wasmgl.GLsizei(info.Height))
 	result := &Texture{
-		raw:  raw,
-		kind: wasmgl.TEXTURE_2D,
-
+		label:  info.Label,
+		raw:    raw,
+		kind:   wasmgl.TEXTURE_2D,
 		width:  info.Width,
 		height: info.Height,
 	}
@@ -109,6 +126,10 @@ func NewStencilTexture2D(info render.StencilTexture2DInfo) *Texture {
 }
 
 func NewDepthStencilTexture2D(info render.DepthStencilTexture2DInfo) *Texture {
+	if glLogger.IsDebugEnabled() {
+		defer trackError("Error creating depth-stencil texture 2D (%v)", info.Label)()
+	}
+
 	raw := wasmgl.CreateTexture()
 	wasmgl.BindTexture(wasmgl.TEXTURE_2D, raw)
 	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_WRAP_S, wasmgl.CLAMP_TO_EDGE)
@@ -117,9 +138,9 @@ func NewDepthStencilTexture2D(info render.DepthStencilTexture2DInfo) *Texture {
 	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_MAG_FILTER, wasmgl.NEAREST)
 	wasmgl.TexStorage2D(wasmgl.TEXTURE_2D, 1, wasmgl.DEPTH24_STENCIL8, wasmgl.GLsizei(info.Width), wasmgl.GLsizei(info.Height))
 	result := &Texture{
-		raw:  raw,
-		kind: wasmgl.TEXTURE_2D,
-
+		label:  info.Label,
+		raw:    raw,
+		kind:   wasmgl.TEXTURE_2D,
 		width:  info.Width,
 		height: info.Height,
 	}
@@ -128,6 +149,10 @@ func NewDepthStencilTexture2D(info render.DepthStencilTexture2DInfo) *Texture {
 }
 
 func NewColorTextureCube(info render.ColorTextureCubeInfo) *Texture {
+	if glLogger.IsDebugEnabled() {
+		defer trackError("Error creating color texture cube (%v)", info.Label)()
+	}
+
 	raw := wasmgl.CreateTexture()
 	wasmgl.BindTexture(wasmgl.TEXTURE_CUBE_MAP, raw)
 	wasmgl.TexParameteri(wasmgl.TEXTURE_CUBE_MAP, wasmgl.TEXTURE_WRAP_S, wasmgl.CLAMP_TO_EDGE)
@@ -167,9 +192,9 @@ func NewColorTextureCube(info render.ColorTextureCubeInfo) *Texture {
 	}
 
 	result := &Texture{
-		raw:  raw,
-		kind: wasmgl.TEXTURE_CUBE_MAP,
-
+		label:  info.Label,
+		raw:    raw,
+		kind:   wasmgl.TEXTURE_CUBE_MAP,
 		width:  info.Dimension,
 		height: info.Dimension,
 		depth:  info.Dimension,
@@ -180,13 +205,18 @@ func NewColorTextureCube(info render.ColorTextureCubeInfo) *Texture {
 
 type Texture struct {
 	render.TextureMarker
-	id   uint32
-	raw  wasmgl.Texture
-	kind wasmgl.GLenum
 
+	label  string
+	id     uint32
+	raw    wasmgl.Texture
+	kind   wasmgl.GLenum
 	width  uint32
 	height uint32
 	depth  uint32
+}
+
+func (t *Texture) Label() string {
+	return t.label
 }
 
 func (t *Texture) Width() uint32 {
@@ -209,6 +239,10 @@ func (t *Texture) Release() {
 }
 
 func NewSampler(info render.SamplerInfo) *Sampler {
+	if glLogger.IsDebugEnabled() {
+		defer trackError("Error creating sampler (%v)", info.Label)()
+	}
+
 	raw := wasmgl.CreateSampler()
 	wasmgl.SamplerParameteri(raw, wasmgl.TEXTURE_WRAP_S, glWrap(info.Wrapping))
 	wasmgl.SamplerParameteri(raw, wasmgl.TEXTURE_WRAP_T, glWrap(info.Wrapping))
@@ -221,7 +255,8 @@ func NewSampler(info render.SamplerInfo) *Sampler {
 	}
 
 	result := &Sampler{
-		raw: raw,
+		label: info.Label,
+		raw:   raw,
 	}
 	result.id = samplers.Allocate(result)
 	return result
@@ -229,8 +264,14 @@ func NewSampler(info render.SamplerInfo) *Sampler {
 
 type Sampler struct {
 	render.SamplerMarker
-	id  uint32
-	raw wasmgl.Sampler
+
+	label string
+	id    uint32
+	raw   wasmgl.Sampler
+}
+
+func (s *Sampler) Label() string {
+	return s.label
 }
 
 func (s *Sampler) Release() {
