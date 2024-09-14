@@ -6,26 +6,40 @@ import (
 )
 
 func NewVertexBuffer(info render.BufferInfo) *Buffer {
+	if glLogger.IsDebugEnabled() {
+		defer trackError("Error creating vertex buffer (%v)", info.Label)()
+	}
 	return newBuffer(info, wasmgl.ARRAY_BUFFER)
 }
 
 func NewIndexBuffer(info render.BufferInfo) *Buffer {
+	if glLogger.IsDebugEnabled() {
+		defer trackError("Error creating index buffer (%v)", info.Label)()
+	}
 	return newBuffer(info, wasmgl.ELEMENT_ARRAY_BUFFER)
 }
 
 func NewPixelTransferBuffer(info render.BufferInfo) render.Buffer {
+	if glLogger.IsDebugEnabled() {
+		defer trackError("Error creating pixel transfer buffer (%v)", info.Label)()
+	}
+
 	raw := wasmgl.CreateBuffer()
 	wasmgl.BindBuffer(wasmgl.PIXEL_PACK_BUFFER, raw)
 	wasmgl.BufferData(wasmgl.PIXEL_PACK_BUFFER, wasmgl.GLintptr(info.Size), nil, wasmgl.DYNAMIC_READ)
 	result := &Buffer{
-		raw:  raw,
-		kind: wasmgl.PIXEL_PACK_BUFFER,
+		label: info.Label,
+		raw:   raw,
+		kind:  wasmgl.PIXEL_PACK_BUFFER,
 	}
 	result.id = buffers.Allocate(result)
 	return result
 }
 
 func NewUniformBuffer(info render.BufferInfo) render.Buffer {
+	if glLogger.IsDebugEnabled() {
+		defer trackError("Error creating uniform buffer (%v)", info.Label)()
+	}
 	return newBuffer(info, wasmgl.UNIFORM_BUFFER)
 }
 
@@ -38,8 +52,9 @@ func newBuffer(info render.BufferInfo, kind wasmgl.GLenum) *Buffer {
 		wasmgl.BufferData(kind, wasmgl.GLintptr(info.Size), nil, glBufferUsage(info.Dynamic))
 	}
 	result := &Buffer{
-		raw:  raw,
-		kind: kind,
+		label: info.Label,
+		raw:   raw,
+		kind:  kind,
 	}
 	result.id = buffers.Allocate(result)
 	return result
@@ -47,9 +62,15 @@ func newBuffer(info render.BufferInfo, kind wasmgl.GLenum) *Buffer {
 
 type Buffer struct {
 	render.BufferMarker
-	id   uint32
-	raw  wasmgl.Buffer
-	kind wasmgl.GLenum
+
+	label string
+	id    uint32
+	raw   wasmgl.Buffer
+	kind  wasmgl.GLenum
+}
+
+func (b *Buffer) Label() string {
+	return b.label
 }
 
 func (b *Buffer) Release() {
