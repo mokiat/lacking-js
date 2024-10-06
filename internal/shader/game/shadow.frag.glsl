@@ -1,5 +1,5 @@
-/*template "version.glsl"*/
-/*template "precision.glsl"*/
+/* template "version.glsl" */
+/* template "precision.glsl" */
 
 void main()
 {

@@ -17,17 +17,25 @@ func NewColorTexture2D(info render.ColorTexture2DInfo) *Texture {
 	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_MIN_FILTER, wasmgl.NEAREST)
 	wasmgl.TexParameteri(wasmgl.TEXTURE_2D, wasmgl.TEXTURE_MAG_FILTER, wasmgl.NEAREST)
 
-	levels := glMipmapLevels(info.Width, info.Height, info.GenerateMipmaps)
+	width := info.MipmapLayers[0].Width
+	height := info.MipmapLayers[0].Height
 	internalFormat := glInternalFormat(info.Format, info.GammaCorrection)
-	wasmgl.TexStorage2D(wasmgl.TEXTURE_2D, levels, internalFormat, wasmgl.GLsizei(info.Width), wasmgl.GLsizei(info.Height))
-
-	if info.Data != nil {
-		dataFormat := glDataFormat(info.Format)
-		componentType := glDataComponentType(info.Format)
-		wasmgl.TexSubImage2D(wasmgl.TEXTURE_2D, 0, 0, 0, wasmgl.GLsizei(info.Width), wasmgl.GLsizei(info.Height), dataFormat, componentType, info.Data)
+	if levels := int32(len(info.MipmapLayers)); levels > 1 {
+		wasmgl.TexStorage2D(wasmgl.TEXTURE_2D, levels, internalFormat, wasmgl.GLsizei(width), wasmgl.GLsizei(height))
+	} else {
+		levels := glMipmapLevels(width, height, info.GenerateMipmaps)
+		wasmgl.TexStorage2D(wasmgl.TEXTURE_2D, levels, internalFormat, wasmgl.GLsizei(width), wasmgl.GLsizei(height))
 	}
 
-	if info.GenerateMipmaps {
+	dataFormat := glDataFormat(info.Format)
+	componentType := glDataComponentType(info.Format)
+	for i, mipmapLayer := range info.MipmapLayers {
+		if mipmapLayer.Data != nil {
+			wasmgl.TexSubImage2D(wasmgl.TEXTURE_2D, int32(i), 0, 0, wasmgl.GLsizei(mipmapLayer.Width), wasmgl.GLsizei(mipmapLayer.Height), dataFormat, componentType, mipmapLayer.Data)
+		}
+	}
+
+	if info.GenerateMipmaps && len(info.MipmapLayers) == 1 {
 		// TODO: Move as separate command
 		wasmgl.GenerateMipmap(wasmgl.TEXTURE_2D)
 	}
@@ -36,8 +44,8 @@ func NewColorTexture2D(info render.ColorTexture2DInfo) *Texture {
 		label:  info.Label,
 		raw:    raw,
 		kind:   wasmgl.TEXTURE_2D,
-		width:  info.Width,
-		height: info.Height,
+		width:  width,
+		height: height,
 	}
 	result.id = textures.Allocate(result)
 	return result
@@ -161,32 +169,39 @@ func NewColorTextureCube(info render.ColorTextureCubeInfo) *Texture {
 	wasmgl.TexParameteri(wasmgl.TEXTURE_CUBE_MAP, wasmgl.TEXTURE_MIN_FILTER, wasmgl.NEAREST)
 	wasmgl.TexParameteri(wasmgl.TEXTURE_CUBE_MAP, wasmgl.TEXTURE_MAG_FILTER, wasmgl.NEAREST)
 
-	levels := glMipmapLevels(info.Dimension, info.Dimension, info.GenerateMipmaps)
+	dimension := info.MipmapLayers[0].Dimension
 	internalFormat := glInternalFormat(info.Format, info.GammaCorrection)
-	wasmgl.TexStorage2D(wasmgl.TEXTURE_CUBE_MAP, levels, internalFormat, wasmgl.GLsizei(info.Dimension), wasmgl.GLsizei(info.Dimension))
+	if levels := int32(len(info.MipmapLayers)); levels > 1 {
+		wasmgl.TexStorage2D(wasmgl.TEXTURE_CUBE_MAP, levels, internalFormat, wasmgl.GLsizei(dimension), wasmgl.GLsizei(dimension))
+	} else {
+		levels := glMipmapLevels(dimension, dimension, info.GenerateMipmaps)
+		wasmgl.TexStorage2D(wasmgl.TEXTURE_CUBE_MAP, levels, internalFormat, wasmgl.GLsizei(dimension), wasmgl.GLsizei(dimension))
+	}
 
 	dataFormat := glDataFormat(info.Format)
 	componentType := glDataComponentType(info.Format)
-	if info.RightSideData != nil {
-		wasmgl.TexSubImage2D(wasmgl.TEXTURE_CUBE_MAP_POSITIVE_X, 0, 0, 0, wasmgl.GLsizei(info.Dimension), wasmgl.GLsizei(info.Dimension), dataFormat, componentType, info.RightSideData)
-	}
-	if info.LeftSideData != nil {
-		wasmgl.TexSubImage2D(wasmgl.TEXTURE_CUBE_MAP_NEGATIVE_X, 0, 0, 0, wasmgl.GLsizei(info.Dimension), wasmgl.GLsizei(info.Dimension), dataFormat, componentType, info.LeftSideData)
-	}
-	if info.BottomSideData != nil {
-		wasmgl.TexSubImage2D(wasmgl.TEXTURE_CUBE_MAP_POSITIVE_Y, 0, 0, 0, wasmgl.GLsizei(info.Dimension), wasmgl.GLsizei(info.Dimension), dataFormat, componentType, info.BottomSideData)
-	}
-	if info.TopSideData != nil {
-		wasmgl.TexSubImage2D(wasmgl.TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, 0, 0, wasmgl.GLsizei(info.Dimension), wasmgl.GLsizei(info.Dimension), dataFormat, componentType, info.TopSideData)
-	}
-	if info.FrontSideData != nil {
-		wasmgl.TexSubImage2D(wasmgl.TEXTURE_CUBE_MAP_POSITIVE_Z, 0, 0, 0, wasmgl.GLsizei(info.Dimension), wasmgl.GLsizei(info.Dimension), dataFormat, componentType, info.FrontSideData)
-	}
-	if info.BackSideData != nil {
-		wasmgl.TexSubImage2D(wasmgl.TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, 0, 0, wasmgl.GLsizei(info.Dimension), wasmgl.GLsizei(info.Dimension), dataFormat, componentType, info.BackSideData)
+	for i, mipmapLayer := range info.MipmapLayers {
+		if mipmapLayer.RightSideData != nil {
+			wasmgl.TexSubImage2D(wasmgl.TEXTURE_CUBE_MAP_POSITIVE_X, int32(i), 0, 0, wasmgl.GLsizei(mipmapLayer.Dimension), wasmgl.GLsizei(mipmapLayer.Dimension), dataFormat, componentType, mipmapLayer.RightSideData)
+		}
+		if mipmapLayer.LeftSideData != nil {
+			wasmgl.TexSubImage2D(wasmgl.TEXTURE_CUBE_MAP_NEGATIVE_X, int32(i), 0, 0, wasmgl.GLsizei(mipmapLayer.Dimension), wasmgl.GLsizei(mipmapLayer.Dimension), dataFormat, componentType, mipmapLayer.LeftSideData)
+		}
+		if mipmapLayer.BottomSideData != nil {
+			wasmgl.TexSubImage2D(wasmgl.TEXTURE_CUBE_MAP_POSITIVE_Y, int32(i), 0, 0, wasmgl.GLsizei(mipmapLayer.Dimension), wasmgl.GLsizei(mipmapLayer.Dimension), dataFormat, componentType, mipmapLayer.BottomSideData)
+		}
+		if mipmapLayer.TopSideData != nil {
+			wasmgl.TexSubImage2D(wasmgl.TEXTURE_CUBE_MAP_NEGATIVE_Y, int32(i), 0, 0, wasmgl.GLsizei(mipmapLayer.Dimension), wasmgl.GLsizei(mipmapLayer.Dimension), dataFormat, componentType, mipmapLayer.TopSideData)
+		}
+		if mipmapLayer.FrontSideData != nil {
+			wasmgl.TexSubImage2D(wasmgl.TEXTURE_CUBE_MAP_POSITIVE_Z, int32(i), 0, 0, wasmgl.GLsizei(mipmapLayer.Dimension), wasmgl.GLsizei(mipmapLayer.Dimension), dataFormat, componentType, mipmapLayer.FrontSideData)
+		}
+		if mipmapLayer.BackSideData != nil {
+			wasmgl.TexSubImage2D(wasmgl.TEXTURE_CUBE_MAP_NEGATIVE_Z, int32(i), 0, 0, wasmgl.GLsizei(mipmapLayer.Dimension), wasmgl.GLsizei(mipmapLayer.Dimension), dataFormat, componentType, mipmapLayer.BackSideData)
+		}
 	}
 
-	if info.GenerateMipmaps {
+	if info.GenerateMipmaps && len(info.MipmapLayers) == 1 {
 		// TODO: Move as separate command
 		wasmgl.GenerateMipmap(wasmgl.TEXTURE_CUBE_MAP)
 	}
@@ -195,9 +210,9 @@ func NewColorTextureCube(info render.ColorTextureCubeInfo) *Texture {
 		label:  info.Label,
 		raw:    raw,
 		kind:   wasmgl.TEXTURE_CUBE_MAP,
-		width:  info.Dimension,
-		height: info.Dimension,
-		depth:  info.Dimension,
+		width:  dimension,
+		height: dimension,
+		depth:  dimension,
 	}
 	result.id = textures.Allocate(result)
 	return result
