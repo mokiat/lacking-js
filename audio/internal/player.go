@@ -39,7 +39,7 @@ func (p *Player) CreateMedia(info audio.MediaInfo) *Media {
 
 func (p *Player) Play(media *Media, info audio.PlayInfo) *Playback {
 	gainNode := p.audioContext.CreateGain()
-	gainNode.Gain().SetValue(info.Gain)
+	gainNode.Gain().SetValue(info.Gain.ValueOrDefault(1.0))
 	gainNode.ConnectNode(p.audioContext.Destination())
 
 	panNode := p.audioContext.CreateStereoPanner()
