@@ -262,12 +262,12 @@ func (l *loop) SetCursorLocked(locked bool) {
 func (l *loop) RequestCopy(text string) {
 	jsNavigator := js.Global().Get("navigator")
 	if jsNavigator.IsUndefined() || jsNavigator.IsNull() {
-		appLogger.Warn("JavaScript navigator not found!")
+		logger.Warn("JavaScript navigator not found")
 		return
 	}
 	jsClipboard := jsNavigator.Get("clipboard")
 	if jsClipboard.IsUndefined() || jsClipboard.IsNull() {
-		appLogger.Warn("JavaScript clipboard not found!")
+		logger.Warn("JavaScript clipboard not found")
 		return
 	}
 	jsClipboard.Call("writeText", text)
@@ -276,17 +276,17 @@ func (l *loop) RequestCopy(text string) {
 func (l *loop) RequestPaste() {
 	jsNavigator := js.Global().Get("navigator")
 	if jsNavigator.IsUndefined() || jsNavigator.IsNull() {
-		appLogger.Warn("JavaScript navigator not found!")
+		logger.Warn("JavaScript navigator not found")
 		return
 	}
 	jsClipboard := jsNavigator.Get("clipboard")
 	if jsClipboard.IsUndefined() || jsClipboard.IsNull() {
-		appLogger.Warn("JavaScript clipboard not found!")
+		logger.Warn("JavaScript clipboard not found")
 		return
 	}
 	jsPromise := jsClipboard.Call("readText")
 	if jsPromise.IsUndefined() || jsPromise.IsNull() {
-		appLogger.Warn("JavaScript clipboard.readText promise missing!")
+		logger.Warn("JavaScript clipboard.readText promise missing")
 		return
 	}
 	jsPromise.Call("then", l.clipboardCallback)

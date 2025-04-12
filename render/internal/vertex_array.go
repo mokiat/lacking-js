@@ -8,9 +8,7 @@ import (
 )
 
 func NewVertexArray(info render.VertexArrayInfo) *VertexArray {
-	if glLogger.IsDebugEnabled() {
-		defer trackError("Error creating vertex array (%v)", info.Label)()
-	}
+	defer trackError("Error creating vertex array", info.Label)()
 
 	raw := wasmgl.CreateVertexArray()
 	wasmgl.BindVertexArray(raw)

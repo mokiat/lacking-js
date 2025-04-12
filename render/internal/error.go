@@ -1,19 +1,31 @@
 package internal
 
 import (
+	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/mokiat/wasmgl"
 )
 
-func trackError(format string, args ...any) func() {
+var isDebugEnabled = logger.Enabled(context.Background(), slog.LevelDebug)
+
+func trackError(msg, label string) func() {
+	if !isDebugEnabled {
+		return nopFunc
+	}
 	clearErrors()
 	return func() {
 		if err := getError(); err != "" {
-			logger.Error(format+": "+err, args...)
+			logger.Error(msg,
+				slog.String("label", label),
+				slog.String("error", err),
+			)
 		}
 	}
 }
+
+func nopFunc() {}
 
 func clearErrors() {
 	for wasmgl.GetError() != wasmgl.NO_ERROR {
