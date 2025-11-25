@@ -95,8 +95,8 @@ func (a *API) CreatePipeline(info render.PipelineInfo) render.Pipeline {
 	return internal.NewPipeline(info)
 }
 
-func (a *API) CreateCommandBuffer(initialCapacity uint) render.CommandBuffer {
-	return internal.NewCommandBuffer(initialCapacity)
+func (a *API) CreateCommandBuffer(info render.CommandBufferInfo) render.CommandBuffer {
+	return internal.NewCommandBuffer(info)
 }
 
 func (a *API) Queue() render.Queue {

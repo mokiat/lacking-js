@@ -8,6 +8,7 @@ import (
 	"syscall/js"
 	"time"
 
+	"github.com/mokiat/gomath/dprec"
 	jsaudio "github.com/mokiat/lacking-js/audio"
 	jsrender "github.com/mokiat/lacking-js/render"
 	"github.com/mokiat/lacking/app"
@@ -40,23 +41,27 @@ func newLoop(htmlDocument, htmlCanvas js.Value, controller app.Controller, audio
 			newGamepad(2),
 			newGamepad(3),
 		},
-		shouldStop: false,
+		gamepadStates:     [4]gamepadState{},
+		lastGamepadUpdate: time.Now(),
+		shouldStop:        false,
 	}
 }
 
 var _ app.Window = (*loop)(nil)
 
 type loop struct {
-	platform     *platform
-	htmlDocument js.Value
-	htmlCanvas   js.Value
-	controller   app.Controller
-	renderAPI    render.API
-	audioAPI     *jsaudio.API
-	cursor       *Cursor
-	tasks        chan func()
-	gamepads     [4]*Gamepad
-	shouldStop   bool
+	platform          *platform
+	htmlDocument      js.Value
+	htmlCanvas        js.Value
+	controller        app.Controller
+	renderAPI         render.API
+	audioAPI          *jsaudio.API
+	cursor            *Cursor
+	tasks             chan func()
+	gamepads          [4]*Gamepad
+	gamepadStates     [4]gamepadState
+	lastGamepadUpdate time.Time
+	shouldStop        bool
 
 	knownFramebufferWidth  int
 	knownFramebufferHeight int
@@ -131,6 +136,7 @@ func (l *loop) Run() error {
 	var loopFunc js.Func
 	loopFunc = js.FuncOf(func(this js.Value, args []js.Value) any {
 		l.checkResized()
+		l.updateGamepads()
 
 		if l.shouldStop {
 			if l.processTasks(5 * time.Second) {
@@ -262,12 +268,12 @@ func (l *loop) SetCursorLocked(locked bool) {
 func (l *loop) RequestCopy(text string) {
 	jsNavigator := js.Global().Get("navigator")
 	if jsNavigator.IsUndefined() || jsNavigator.IsNull() {
-		appLogger.Warn("JavaScript navigator not found!")
+		logger.Warn("JavaScript navigator not found")
 		return
 	}
 	jsClipboard := jsNavigator.Get("clipboard")
 	if jsClipboard.IsUndefined() || jsClipboard.IsNull() {
-		appLogger.Warn("JavaScript clipboard not found!")
+		logger.Warn("JavaScript clipboard not found")
 		return
 	}
 	jsClipboard.Call("writeText", text)
@@ -276,17 +282,17 @@ func (l *loop) RequestCopy(text string) {
 func (l *loop) RequestPaste() {
 	jsNavigator := js.Global().Get("navigator")
 	if jsNavigator.IsUndefined() || jsNavigator.IsNull() {
-		appLogger.Warn("JavaScript navigator not found!")
+		logger.Warn("JavaScript navigator not found")
 		return
 	}
 	jsClipboard := jsNavigator.Get("clipboard")
 	if jsClipboard.IsUndefined() || jsClipboard.IsNull() {
-		appLogger.Warn("JavaScript clipboard not found!")
+		logger.Warn("JavaScript clipboard not found")
 		return
 	}
 	jsPromise := jsClipboard.Call("readText")
 	if jsPromise.IsUndefined() || jsPromise.IsNull() {
-		appLogger.Warn("JavaScript clipboard.readText promise missing!")
+		logger.Warn("JavaScript clipboard.readText promise missing")
 		return
 	}
 	jsPromise.Call("then", l.clipboardCallback)
@@ -473,4 +479,123 @@ func (l *loop) onClipboardReadText(this js.Value, args []js.Value) any {
 		})
 	})
 	return nil
+}
+
+func (l *loop) updateGamepads() {
+	elapsedTime := time.Since(l.lastGamepadUpdate)
+	for i, gamepad := range l.gamepads {
+		l.updateGamepad(i, gamepad, elapsedTime)
+	}
+	l.lastGamepadUpdate = time.Now()
+}
+
+func (l *loop) updateGamepad(index int, gamepad *Gamepad, elapsedTime time.Duration) {
+	state := &l.gamepadStates[index]
+
+	connected := gamepad.Connected()
+	switch {
+	case connected && !state.connected:
+		l.controller.OnGamepadEvent(l, app.GamepadEvent{
+			Index:   index,
+			Gamepad: gamepad,
+			Action:  app.GamepadActionConnected,
+		})
+	case !connected && state.connected:
+		l.controller.OnGamepadEvent(l, app.GamepadEvent{
+			Index:   index,
+			Gamepad: gamepad,
+			Action:  app.GamepadActionDisconnected,
+		})
+	}
+	state.connected = connected
+
+	var newStickValues [app.GamepadStickCount][2]float64
+	newStickValues[app.GamepadStickLeft] = [2]float64{
+		gamepad.LeftStickX(),
+		gamepad.LeftStickY(),
+	}
+	newStickValues[app.GamepadStickRight] = [2]float64{
+		gamepad.RightStickX(),
+		gamepad.RightStickY(),
+	}
+	newStickValues[app.GamepadStickLeftTrigger] = [2]float64{
+		0.0,
+		gamepad.LeftTrigger(),
+	}
+	newStickValues[app.GamepadStickRightTrigger] = [2]float64{
+		0.0,
+		gamepad.RightTrigger(),
+	}
+	for stick, stickValue := range newStickValues {
+		oldStickValue := state.gamepadStickValues[stick]
+		if !dprec.Eq(stickValue[0], oldStickValue[0]) || !dprec.Eq(stickValue[1], oldStickValue[1]) {
+			l.controller.OnGamepadEvent(l, app.GamepadEvent{
+				Index:   index,
+				Gamepad: gamepad,
+				Action:  app.GamepadActionStickMove,
+				Stick:   app.GamepadStick(stick),
+				X:       stickValue[0],
+				Y:       stickValue[1],
+			})
+		}
+		state.gamepadStickValues[stick] = stickValue
+	}
+
+	var newButtonPressed [app.GamepadButtonCount]bool
+	newButtonPressed[app.GamepadButtonLeftStick] = gamepad.LeftStickButton()
+	newButtonPressed[app.GamepadButtonRightStick] = gamepad.RightStickButton()
+	newButtonPressed[app.GamepadButtonLeftTrigger] = gamepad.LeftTrigger() > 0.5
+	newButtonPressed[app.GamepadButtonRightTrigger] = gamepad.RightTrigger() > 0.5
+	newButtonPressed[app.GamepadButtonLeftBumper] = gamepad.LeftBumper()
+	newButtonPressed[app.GamepadButtonRightBumper] = gamepad.RightBumper()
+	newButtonPressed[app.GamepadButtonDpadUp] = gamepad.DpadUpButton()
+	newButtonPressed[app.GamepadButtonDpadDown] = gamepad.DpadDownButton()
+	newButtonPressed[app.GamepadButtonDpadLeft] = gamepad.DpadLeftButton()
+	newButtonPressed[app.GamepadButtonDpadRight] = gamepad.DpadRightButton()
+	newButtonPressed[app.GamepadButtonActionUp] = gamepad.ActionUpButton()
+	newButtonPressed[app.GamepadButtonActionDown] = gamepad.ActionDownButton()
+	newButtonPressed[app.GamepadButtonActionLeft] = gamepad.ActionLeftButton()
+	newButtonPressed[app.GamepadButtonActionRight] = gamepad.ActionRightButton()
+	newButtonPressed[app.GamepadButtonForward] = gamepad.ForwardButton()
+	newButtonPressed[app.GamepadButtonBack] = gamepad.BackButton()
+	newButtonPressed[app.GamepadButtonLeftStickUp] = gamepad.LeftStickY() < -0.5
+	newButtonPressed[app.GamepadButtonLeftStickDown] = gamepad.LeftStickY() > 0.5
+	newButtonPressed[app.GamepadButtonLeftStickLeft] = gamepad.LeftStickX() < -0.5
+	newButtonPressed[app.GamepadButtonLeftStickRight] = gamepad.LeftStickX() > 0.5
+	newButtonPressed[app.GamepadButtonRightStickUp] = gamepad.RightStickY() < -0.5
+	newButtonPressed[app.GamepadButtonRightStickDown] = gamepad.RightStickY() > 0.5
+	newButtonPressed[app.GamepadButtonRightStickLeft] = gamepad.RightStickX() < -0.5
+	newButtonPressed[app.GamepadButtonRightStickRight] = gamepad.RightStickX() > 0.5
+	for button, pressed := range newButtonPressed {
+		state.gamepadButtonCooldown[button] -= elapsedTime
+		oldPressed := state.gamepadButtonPressed[button]
+		switch {
+		case oldPressed && pressed:
+			if state.gamepadButtonCooldown[button] <= 0 {
+				state.gamepadButtonCooldown[button] = app.GamepadRepeatInterval
+				l.controller.OnGamepadEvent(l, app.GamepadEvent{
+					Index:   index,
+					Gamepad: gamepad,
+					Action:  app.GamepadActionButtonRepeat,
+					Button:  app.GamepadButton(button),
+				})
+			}
+		case !oldPressed && pressed:
+			state.gamepadButtonCooldown[button] = app.GamepadRepeatDelay
+			l.controller.OnGamepadEvent(l, app.GamepadEvent{
+				Index:   index,
+				Gamepad: gamepad,
+				Action:  app.GamepadActionButtonDown,
+				Button:  app.GamepadButton(button),
+			})
+		case oldPressed && !pressed:
+			l.controller.OnGamepadEvent(l, app.GamepadEvent{
+				Index:   index,
+				Gamepad: gamepad,
+				Action:  app.GamepadActionButtonUp,
+				Button:  app.GamepadButton(button),
+			})
+		}
+		state.gamepadButtonPressed[button] = pressed
+	}
 }

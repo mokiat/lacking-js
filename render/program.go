@@ -1,15 +1,6 @@
 package render
 
-import "github.com/mokiat/lacking/render"
+import "github.com/mokiat/lacking/game/graphics/glsl"
 
-// ProgramCode is an implementation of render.ProgramCode that can be used
-// with this render API implementation.
-type ProgramCode struct {
-	render.ProgramCode
-
-	// VertexCode specifies the vertex shader code.
-	VertexCode string
-
-	// FragmentCode specifies the fragment shader code.
-	FragmentCode string
-}
+// TODO: Replace completely with glsl.ProgramCode
+type ProgramCode = glsl.ProgramCode

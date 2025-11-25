@@ -6,24 +6,17 @@ import (
 )
 
 func NewVertexBuffer(info render.BufferInfo) *Buffer {
-	if glLogger.IsDebugEnabled() {
-		defer trackError("Error creating vertex buffer (%v)", info.Label)()
-	}
+	defer trackError("Error creating vertex buffer", info.Label)()
 	return newBuffer(info, wasmgl.ARRAY_BUFFER)
 }
 
 func NewIndexBuffer(info render.BufferInfo) *Buffer {
-	if glLogger.IsDebugEnabled() {
-		defer trackError("Error creating index buffer (%v)", info.Label)()
-	}
+	defer trackError("Error creating index buffer", info.Label)()
 	return newBuffer(info, wasmgl.ELEMENT_ARRAY_BUFFER)
 }
 
 func NewPixelTransferBuffer(info render.BufferInfo) render.Buffer {
-	if glLogger.IsDebugEnabled() {
-		defer trackError("Error creating pixel transfer buffer (%v)", info.Label)()
-	}
-
+	defer trackError("Error creating pixel transfer buffer", info.Label)()
 	raw := wasmgl.CreateBuffer()
 	wasmgl.BindBuffer(wasmgl.PIXEL_PACK_BUFFER, raw)
 	wasmgl.BufferData(wasmgl.PIXEL_PACK_BUFFER, wasmgl.GLintptr(info.Size), nil, wasmgl.DYNAMIC_READ)
@@ -37,9 +30,7 @@ func NewPixelTransferBuffer(info render.BufferInfo) render.Buffer {
 }
 
 func NewUniformBuffer(info render.BufferInfo) render.Buffer {
-	if glLogger.IsDebugEnabled() {
-		defer trackError("Error creating uniform buffer (%v)", info.Label)()
-	}
+	defer trackError("Error creating uniform buffer", info.Label)()
 	return newBuffer(info, wasmgl.UNIFORM_BUFFER)
 }
 

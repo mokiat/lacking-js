@@ -1,8 +1,9 @@
 package internal
 
 import (
+	"log/slog"
+
 	"github.com/mokiat/lacking/audio"
-	"github.com/mokiat/lacking/debug/log"
 	"github.com/mokiat/wasmal"
 )
 
@@ -32,7 +33,9 @@ func (p *Player) CreateMedia(info audio.MediaInfo) *Media {
 			buffer: buffer,
 		}
 	case err := <-resolveErr:
-		log.Error("Error decoding media: %v!", err)
+		logger.Error("Error decoding media",
+			slog.String("error", err.Error()),
+		)
 		return nil
 	}
 }
