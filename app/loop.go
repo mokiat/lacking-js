@@ -57,6 +57,7 @@ type loop struct {
 	renderAPI         render.API
 	audioAPI          *jsaudio.API
 	cursor            *Cursor
+	cursorLocked      bool
 	tasks             chan func()
 	gamepads          [4]*Gamepad
 	gamepadStates     [4]gamepadState
@@ -113,6 +114,11 @@ func (l *loop) Run() error {
 	defer mouseUpCallback.Release()
 	l.htmlCanvas.Call("addEventListener", "pointerup", mouseUpCallback)
 	defer l.htmlCanvas.Call("removeEventListener", "pointerup", mouseUpCallback)
+
+	pointerLockChangeCallback := js.FuncOf(l.onPointerLockChange)
+	defer pointerLockChangeCallback.Release()
+	l.htmlDocument.Call("addEventListener", "pointerlockchange", pointerLockChangeCallback)
+	defer l.htmlDocument.Call("removeEventListener", "pointerlockchange", pointerLockChangeCallback)
 
 	mouseScrollCallback := js.FuncOf(l.onJSMouseWheel)
 	defer mouseScrollCallback.Release()
@@ -252,6 +258,10 @@ func (l *loop) SetCursorVisible(visible bool) {
 	} else {
 		l.htmlCanvas.Get("style").Set("cursor", "none")
 	}
+}
+
+func (l *loop) CursorLocked() bool {
+	return l.cursorLocked
 }
 
 func (l *loop) SetCursorLocked(locked bool) {
@@ -461,6 +471,15 @@ func (l *loop) onJSMouseWheel(this js.Value, args []js.Value) any {
 		ScrollX: event.Get("deltaX").Float() / 100.0,
 		ScrollY: event.Get("deltaY").Float() / 100.0,
 	})
+}
+
+func (l *loop) onPointerLockChange(this js.Value, args []js.Value) any {
+	if l.htmlDocument.Get("pointerLockElement").Equal(l.htmlCanvas) {
+		l.cursorLocked = true
+	} else {
+		l.cursorLocked = false
+	}
+	return js.Null()
 }
 
 func (l *loop) onCloseRequested(this js.Value, args []js.Value) any {

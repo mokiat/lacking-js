@@ -5,7 +5,6 @@ import (
 	"syscall/js"
 	"time"
 
-	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/app"
 )
 
@@ -280,12 +279,12 @@ func (g *Gamepad) refresh() {
 func deadzoneValue(value, deadzone float64) float64 {
 	if math.Signbit(value) {
 		// negative
-		value = dprec.Max(-value, deadzone)
+		value = max(-value, deadzone)
 		value = value - deadzone
 		return -value / (1.0 - deadzone)
 	} else {
 		// positive
-		value = dprec.Max(value, deadzone)
+		value = max(value, deadzone)
 		value = value - deadzone
 		return value / (1.0 - deadzone)
 	}
