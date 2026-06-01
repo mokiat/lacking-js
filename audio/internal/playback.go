@@ -1,14 +1,13 @@
 package internal
 
-import "github.com/mokiat/wasmal"
-
 type Playback struct {
-	node wasmal.AudioScheduledSourceNode
+	srcNode  *PlaybackNode
+	panNode  *PanNode
+	gainNode *GainNode
 }
 
 func (p *Playback) Stop() {
-	if p.node != nil {
-		p.node.Stop(0.0)
-		p.node = nil
+	if p.srcNode != nil {
+		p.srcNode.Stop(0.0)
 	}
 }

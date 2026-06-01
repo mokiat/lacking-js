@@ -8,55 +8,127 @@ import (
 )
 
 func NewPlayer() *Player {
+	audioContext := wasmal.NewAudioContext()
+	listener := newSpatialListener(audioContext)
+	output := newOutputNode(audioContext)
 	return &Player{
-		audioContext: wasmal.NewAudioContext(),
+		audioContext: audioContext,
+		listener:     listener,
+		output:       output,
 	}
 }
 
 type Player struct {
 	audioContext wasmal.AudioContext
+	listener     *SpatialListener
+	output       *OutputNode
 }
 
-func (p *Player) CreateMedia(info audio.MediaInfo) *Media {
-	audioBufferPromise := p.audioContext.DecodeAudioData(info.Data)
-	resolveAudioBuffer := make(chan wasmal.AudioBuffer, 1)
-	resolveErr := make(chan error, 1)
-	audioBufferPromise.Then(func(audioBuffer wasmal.AudioBuffer) {
-		resolveAudioBuffer <- audioBuffer
-	})
-	audioBufferPromise.Catch(func(err error) {
-		resolveErr <- err
-	})
-	select {
-	case buffer := <-resolveAudioBuffer:
-		return &Media{
-			buffer: buffer,
-		}
-	case err := <-resolveErr:
-		logger.Error("Error decoding media",
-			slog.String("error", err.Error()),
+func (p *Player) SampleRate() int {
+	return int(p.audioContext.SampleRate())
+}
+
+func (p *Player) CreateMedia(data audio.MediaData) *Media {
+	frames := data.Frames
+	if data.SampleRate != p.SampleRate() {
+		logger.Warn("Resampling media",
+			slog.Int("from", data.SampleRate),
+			slog.Int("to", p.SampleRate()),
 		)
-		return nil
+		frames = audio.Resample(data.Frames, data.SampleRate, p.SampleRate())
+	}
+
+	buffer := p.audioContext.CreateBuffer(2, uint(len(frames)), uint(p.SampleRate()))
+	if true {
+		panic("TODO: Implement audio buffer data upload")
+	}
+	// TODO:
+	// buffer.GetChannelData(0).Set(frames.Left)
+
+	return &Media{
+		buffer: buffer,
 	}
 }
 
+func (p *Player) Output() *OutputNode {
+	return p.output
+}
+
+func (p *Player) SpatialListener() *SpatialListener {
+	return p.listener
+}
+
+func (p *Player) CreatePlaybackNode(media *Media) *PlaybackNode {
+	return newPlaybackNode(p.audioContext, media)
+}
+
+func (p *Player) CreateOscillatorNode() *OscillatorNode {
+	return newOscillatorNode(p.audioContext)
+}
+
+func (p *Player) CreateGainNode() *GainNode {
+	return newGainNode(p.audioContext)
+}
+
+func (p *Player) CreatePanNode() *PanNode {
+	return newPanNode(p.audioContext)
+}
+
+func (p *Player) CreateSpatialNode() *SpatialNode {
+	return newSpatialNode(p.audioContext)
+}
+
+func (p *Player) CreateHighPassNode() *HighPassNode {
+	return newHighPassNode(p.audioContext)
+}
+
+func (p *Player) CreateLowPassNode() *LowPassNode {
+	return newLowPassNode(p.audioContext)
+}
+
+func (p *Player) CreateDelayNode() *DelayNode {
+	return newDelayNode(p.audioContext)
+}
+
+func (p *Player) CreateReverbNode() *ReverbNode {
+	return newReverbNode(p.audioContext)
+}
+
+func (p *Player) CreateCompressorNode() *CompressorNode {
+	return newCompressorNode(p.audioContext)
+}
+
+func (p *Player) CreateConnectorNode() *ConnectorNode {
+	return newConnectorNode(p.audioContext)
+}
+
+func (p *Player) Connect(from, to Node) {
+	from.AudioNode().ConnectNode(to.AudioNode())
+}
+
+func (p *Player) Disconnect(from, to Node) {
+	from.AudioNode().DisconnectNode(to.AudioNode())
+}
+
 func (p *Player) Play(media *Media, info audio.PlayInfo) *Playback {
-	gainNode := p.audioContext.CreateGain()
-	gainNode.Gain().SetValue(info.Gain.ValueOrDefault(1.0))
-	gainNode.ConnectNode(p.audioContext.Destination())
+	srcNode := p.CreatePlaybackNode(media)
+	srcNode.SetLoop(info.Loop)
+	srcNode.Start(0.0)
 
-	panNode := p.audioContext.CreateStereoPanner()
-	panNode.Pan().SetValue(info.Pan)
-	panNode.ConnectNode(gainNode)
+	panNode := p.CreatePanNode()
+	panNode.SetPan(float32(info.Pan))
 
-	bufferSource := p.audioContext.CreateBufferSource()
-	bufferSource.SetBuffer(media.buffer)
-	bufferSource.SetLoop(info.Loop)
-	bufferSource.ConnectNode(panNode)
-	bufferSource.Start(0.0)
+	gainNode := p.CreateGainNode()
+	gainNode.SetGain(float32(info.Gain.ValueOrDefault(1.0)))
+
+	p.Connect(srcNode, panNode)
+	p.Connect(panNode, gainNode)
+	p.Connect(gainNode, p.output)
 
 	return &Playback{
-		node: bufferSource,
+		srcNode:  srcNode,
+		panNode:  panNode,
+		gainNode: gainNode,
 	}
 }
 
