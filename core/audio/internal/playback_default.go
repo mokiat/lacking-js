@@ -1,6 +1,6 @@
 package internal
 
-import "github.com/mokiat/lacking/audio"
+import "github.com/mokiat/lacking/core/audio"
 
 type DefaultPlayback struct {
 	*BasePlayback

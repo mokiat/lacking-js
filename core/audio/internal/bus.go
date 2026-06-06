@@ -25,18 +25,19 @@ func NewBus(ctx wasmal.AudioContext, settings audio.BusSettings) *Bus {
 	var compressionFilter *CompressionFilter
 	if settings.UseCompression {
 		compressionFilter = NewCompressionFilter(ctx)
+		lastOutput.ConnectToNode(compressionFilter.Input())
 		lastOutput = compressionFilter.Output()
-		gainFilter.Output().ConnectToNode(lastOutput)
 	}
 
 	var reverbFilter *ReverbFilter
 	if settings.UseReverb {
 		reverbFilter = NewReverbFilter(ctx)
 		lastOutput.ConnectToNode(reverbFilter.Input())
+		lastOutput = reverbFilter.Output()
 	}
 
 	return &Bus{
-		gainFilter:        NewGainFilter(ctx),
+		gainFilter:        gainFilter,
 		compressionFilter: compressionFilter,
 		reverbFilter:      reverbFilter,
 
@@ -114,6 +115,9 @@ func (b *Bus) Resume() {
 }
 
 func (b *Bus) Release() {
+	for _, p := range b.playbacks.Unbox() {
+		p.Output().Disconnect()
+	}
 	b.Input().Disconnect()
 	b.Output().Disconnect()
 	b.playbacks = nil

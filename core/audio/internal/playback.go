@@ -56,6 +56,7 @@ func NewBasePlayback(ctx wasmal.AudioContext, media *Media, settings audio.Playb
 		lastOutput.ConnectToNode(result.lowPassFilter.Input())
 		lastOutput = result.lowPassFilter.Output()
 	}
+
 	if settings.UseHighPassFilter {
 		result.highPassFilter = NewHighPassFilter(ctx)
 		lastOutput.ConnectToNode(result.highPassFilter.Input())
@@ -186,7 +187,7 @@ func (p *BasePlayback) SetLooping(loop bool) {
 
 // LoopStart returns the loop start position in seconds.
 func (p *BasePlayback) LoopStart() float64 {
-	return p.sourceNode.LoopEnd()
+	return p.sourceNode.LoopStart()
 }
 
 // SetLoopStart sets the loop start position in seconds.

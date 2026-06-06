@@ -2,7 +2,7 @@ package internal
 
 import (
 	"github.com/mokiat/gomath/sprec"
-	"github.com/mokiat/lacking/audio"
+	"github.com/mokiat/lacking/core/audio"
 	"github.com/mokiat/wasmal"
 )
 

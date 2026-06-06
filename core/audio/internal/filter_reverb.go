@@ -6,9 +6,13 @@ import (
 )
 
 type ReverbFilter struct {
-
 	// FIXME: Using GainNode as placeholder.
 	delegate wasmal.GainNode
+
+	roomSize float32
+	damping  float32
+	dry      float32
+	wet      float32
 }
 
 var _ audio.Reverb = (*ReverbFilter)(nil)
@@ -29,33 +33,33 @@ func (f *ReverbFilter) Output() wasmal.AudioNode {
 }
 
 func (f *ReverbFilter) RoomSize() float32 {
-	panic("TODO")
+	return f.roomSize
 }
 
 func (f *ReverbFilter) SetRoomSize(size float32) {
-	panic("TODO")
+	f.roomSize = size
 }
 
 func (f *ReverbFilter) Damping() float32 {
-	panic("TODO")
+	return f.damping
 }
 
 func (f *ReverbFilter) SetDamping(damping float32) {
-	panic("TODO")
+	f.damping = damping
 }
 
 func (f *ReverbFilter) Dry() float32 {
-	panic("TODO")
+	return f.dry
 }
 
 func (f *ReverbFilter) SetDry(dry float32) {
-	panic("TODO")
+	f.dry = dry
 }
 
 func (f *ReverbFilter) Wet() float32 {
-	panic("TODO")
+	return f.wet
 }
 
 func (f *ReverbFilter) SetWet(wet float32) {
-	panic("TODO")
+	f.wet = wet
 }
