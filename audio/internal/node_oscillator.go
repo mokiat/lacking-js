@@ -28,7 +28,7 @@ func (n *OscillatorNode) Frequency() float32 {
 }
 
 func (n *OscillatorNode) SetFrequency(frequency float32) {
-	n.delegate.Frequency().SetValue(float64(frequency))
+	n.delegate.Frequency().SetValue(frequency)
 }
 
 func (n *OscillatorNode) Delete() {

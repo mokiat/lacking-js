@@ -27,9 +27,9 @@ func (l *SpatialListener) Position() sprec.Vec3 {
 }
 
 func (l *SpatialListener) SetPosition(position sprec.Vec3) {
-	l.delegate.PositionX().SetValue(float64(position.X))
-	l.delegate.PositionY().SetValue(float64(position.Y))
-	l.delegate.PositionZ().SetValue(float64(position.Z))
+	l.delegate.PositionX().SetValue(position.X)
+	l.delegate.PositionY().SetValue(position.Y)
+	l.delegate.PositionZ().SetValue(position.Z)
 }
 
 func (l *SpatialListener) Rotation() sprec.Quat {
@@ -51,12 +51,12 @@ func (l *SpatialListener) Rotation() sprec.Quat {
 
 func (l *SpatialListener) SetRotation(rotation sprec.Quat) {
 	orientationX := rotation.OrientationX()
-	l.delegate.ForwardX().SetValue(float64(orientationX.X))
-	l.delegate.ForwardY().SetValue(float64(orientationX.Y))
-	l.delegate.ForwardZ().SetValue(float64(orientationX.Z))
+	l.delegate.ForwardX().SetValue(orientationX.X)
+	l.delegate.ForwardY().SetValue(orientationX.Y)
+	l.delegate.ForwardZ().SetValue(orientationX.Z)
 
 	orientationY := rotation.OrientationY()
-	l.delegate.UpX().SetValue(float64(orientationY.X))
-	l.delegate.UpY().SetValue(float64(orientationY.Y))
-	l.delegate.UpZ().SetValue(float64(orientationY.Z))
+	l.delegate.UpX().SetValue(orientationY.X)
+	l.delegate.UpY().SetValue(orientationY.Y)
+	l.delegate.UpZ().SetValue(orientationY.Z)
 }

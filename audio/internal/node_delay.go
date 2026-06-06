@@ -15,7 +15,7 @@ var _ Node = (*DelayNode)(nil)
 
 func newDelayNode(audioContext wasmal.AudioContext) *DelayNode {
 	return &DelayNode{
-		delegate: audioContext.CreateDelay(),
+		delegate: audioContext.CreateDelay(1.0),
 	}
 }
 
@@ -28,7 +28,7 @@ func (n *DelayNode) DelayTime() float32 {
 }
 
 func (n *DelayNode) SetDelayTime(delayTime float32) {
-	n.delegate.DelayTime().SetValue(float64(delayTime))
+	n.delegate.DelayTime().SetValue(delayTime)
 }
 
 func (n *DelayNode) Delete() {

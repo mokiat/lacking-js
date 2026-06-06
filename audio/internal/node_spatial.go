@@ -33,9 +33,9 @@ func (n *SpatialNode) Position() sprec.Vec3 {
 }
 
 func (n *SpatialNode) SetPosition(position sprec.Vec3) {
-	n.delegate.PositionX().SetValue(float64(position.X))
-	n.delegate.PositionY().SetValue(float64(position.Y))
-	n.delegate.PositionZ().SetValue(float64(position.Z))
+	n.delegate.PositionX().SetValue(position.X)
+	n.delegate.PositionY().SetValue(position.Y)
+	n.delegate.PositionZ().SetValue(position.Z)
 }
 
 func (n *SpatialNode) Delete() {

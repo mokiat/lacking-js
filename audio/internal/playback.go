@@ -8,6 +8,6 @@ type Playback struct {
 
 func (p *Playback) Stop() {
 	if p.srcNode != nil {
-		p.srcNode.Stop(0.0)
+		p.srcNode.Stop()
 	}
 }

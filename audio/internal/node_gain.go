@@ -28,7 +28,7 @@ func (n *GainNode) Gain() float32 {
 }
 
 func (n *GainNode) SetGain(gain float32) {
-	n.delegate.Gain().SetValue(float64(gain))
+	n.delegate.Gain().SetValue(gain)
 }
 
 func (n *GainNode) Delete() {

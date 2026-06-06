@@ -28,7 +28,7 @@ func (n *CompressorNode) Attack() float32 {
 }
 
 func (n *CompressorNode) SetAttack(attack float32) {
-	n.delegate.Attack().SetValue(float64(attack))
+	n.delegate.Attack().SetValue(attack)
 }
 
 func (n *CompressorNode) Release() float32 {
@@ -36,7 +36,7 @@ func (n *CompressorNode) Release() float32 {
 }
 
 func (n *CompressorNode) SetRelease(release float32) {
-	n.delegate.Release().SetValue(float64(release))
+	n.delegate.Release().SetValue(release)
 }
 
 func (n *CompressorNode) Ratio() float32 {
@@ -44,7 +44,7 @@ func (n *CompressorNode) Ratio() float32 {
 }
 
 func (n *CompressorNode) SetRatio(ratio float32) {
-	n.delegate.Ratio().SetValue(float64(ratio))
+	n.delegate.Ratio().SetValue(ratio)
 }
 
 func (n *CompressorNode) Knee() float32 {
@@ -52,7 +52,7 @@ func (n *CompressorNode) Knee() float32 {
 }
 
 func (n *CompressorNode) SetKnee(knee float32) {
-	n.delegate.Knee().SetValue(float64(knee))
+	n.delegate.Knee().SetValue(knee)
 }
 
 func (n *CompressorNode) Threshold() float32 {
@@ -60,7 +60,7 @@ func (n *CompressorNode) Threshold() float32 {
 }
 
 func (n *CompressorNode) SetThreshold(threshold float32) {
-	n.delegate.Threshold().SetValue(float64(threshold))
+	n.delegate.Threshold().SetValue(threshold)
 }
 
 func (n *CompressorNode) Delete() {

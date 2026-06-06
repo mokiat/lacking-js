@@ -28,7 +28,7 @@ func (n *PanNode) Pan() float32 {
 }
 
 func (n *PanNode) SetPan(pan float32) {
-	n.delegate.Pan().SetValue(float64(pan))
+	n.delegate.Pan().SetValue(pan)
 }
 
 func (n *PanNode) Delete() {

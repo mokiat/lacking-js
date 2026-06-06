@@ -38,7 +38,7 @@ func (p *Player) CreateMedia(data audio.MediaData) *Media {
 		frames = audio.Resample(data.Frames, data.SampleRate, p.SampleRate())
 	}
 
-	buffer := p.audioContext.CreateBuffer(2, uint(len(frames)), uint(p.SampleRate()))
+	buffer := p.audioContext.CreateBuffer(2, uint32(len(frames)), float32(p.SampleRate()))
 	if true {
 		panic("TODO: Implement audio buffer data upload")
 	}
@@ -59,7 +59,7 @@ func (p *Player) SpatialListener() *SpatialListener {
 }
 
 func (p *Player) CreatePlaybackNode(media *Media) *PlaybackNode {
-	return newPlaybackNode(p.audioContext, media)
+	panic("TODO")
 }
 
 func (p *Player) CreateOscillatorNode() *OscillatorNode {
@@ -78,20 +78,20 @@ func (p *Player) CreateSpatialNode() *SpatialNode {
 	return newSpatialNode(p.audioContext)
 }
 
-func (p *Player) CreateHighPassNode() *HighPassNode {
-	return newHighPassNode(p.audioContext)
+func (p *Player) CreateHighPassNode() audio.HighPassNode {
+	panic("TODO")
 }
 
-func (p *Player) CreateLowPassNode() *LowPassNode {
-	return newLowPassNode(p.audioContext)
+func (p *Player) CreateLowPassNode() audio.LowPassNode {
+	panic("TODO")
 }
 
 func (p *Player) CreateDelayNode() *DelayNode {
 	return newDelayNode(p.audioContext)
 }
 
-func (p *Player) CreateReverbNode() *ReverbNode {
-	return newReverbNode(p.audioContext)
+func (p *Player) CreateReverbNode() audio.ReverbNode {
+	panic("TODO")
 }
 
 func (p *Player) CreateCompressorNode() *CompressorNode {
@@ -103,11 +103,11 @@ func (p *Player) CreateConnectorNode() *ConnectorNode {
 }
 
 func (p *Player) Connect(from, to Node) {
-	from.AudioNode().ConnectNode(to.AudioNode())
+	panic("TODO")
 }
 
 func (p *Player) Disconnect(from, to Node) {
-	from.AudioNode().DisconnectNode(to.AudioNode())
+	panic("TODO")
 }
 
 func (p *Player) Play(media *Media, info audio.PlayInfo) *Playback {
