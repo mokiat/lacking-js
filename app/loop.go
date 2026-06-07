@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"github.com/mokiat/gomath/dprec"
-	jsaudio "github.com/mokiat/lacking-js/audio"
+	jsaudio "github.com/mokiat/lacking-js/core/audio"
 	jsrender "github.com/mokiat/lacking-js/render"
 	"github.com/mokiat/lacking/app"
-	"github.com/mokiat/lacking/audio"
+	"github.com/mokiat/lacking/core/audio"
 	"github.com/mokiat/lacking/debug/metric"
 	"github.com/mokiat/lacking/render"
 )
@@ -22,18 +22,13 @@ const (
 	taskProcessingTimeout = 30 * time.Millisecond
 )
 
-func newLoop(htmlDocument, htmlCanvas js.Value, controller app.Controller, audioEnabled bool) *loop {
-	var audioAPI *jsaudio.API
-	if audioEnabled {
-		audioAPI = jsaudio.NewAPI()
-	}
+func newLoop(htmlDocument, htmlCanvas js.Value, controller app.Controller) *loop {
 	return &loop{
 		platform:     newPlatform(),
 		htmlDocument: htmlDocument,
 		htmlCanvas:   htmlCanvas,
 		controller:   controller,
 		renderAPI:    jsrender.NewAPI(),
-		audioAPI:     audioAPI,
 		tasks:        make(chan func(), taskQueueSize),
 		gamepads: [4]*Gamepad{
 			newGamepad(0),
@@ -55,7 +50,7 @@ type loop struct {
 	htmlCanvas        js.Value
 	controller        app.Controller
 	renderAPI         render.API
-	audioAPI          *jsaudio.API
+	audioAPI          audio.API
 	cursor            *Cursor
 	cursorLocked      bool
 	tasks             chan func()
@@ -72,9 +67,13 @@ type loop struct {
 	clipboardCallback js.Func
 }
 
-func (l *loop) Run() error {
-	if l.audioAPI != nil {
-		defer l.audioAPI.Close()
+func (l *loop) Run(audioEnabled bool) error {
+	if audioEnabled {
+		jsAPI := jsaudio.NewAPI()
+		defer jsAPI.Release()
+		l.audioAPI = jsAPI
+	} else {
+		l.audioAPI = audio.NewNopAPI()
 	}
 
 	l.controller.OnCreate(l)

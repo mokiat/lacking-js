@@ -77,3 +77,7 @@ func (a *API) MasterBus() audio.MasterBus {
 func (a *API) SpatialListener() audio.SpatialListener {
 	return a.listener
 }
+
+func (p *API) Release() {
+	p.ctx.Close()
+}
