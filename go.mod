@@ -6,7 +6,7 @@ require (
 	github.com/mokiat/gog v0.22.0
 	github.com/mokiat/gomath v0.16.1
 	github.com/mokiat/lacking v0.23.1-0.20260607172448-d07554f717ee
-	github.com/mokiat/wasmal v0.2.0
+	github.com/mokiat/wasmal v0.3.0
 	github.com/mokiat/wasmgl v0.7.0
 )
 
