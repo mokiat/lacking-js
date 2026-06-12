@@ -7,12 +7,20 @@ import (
 )
 
 // ReverbFilter implements a Freeverb-style reverb using 8 parallel feedback
-// comb filters (each with a DelayNode + damping BiquadFilter) followed by 4
-// series all-pass BiquadFilterNodes for diffusion. Dry/wet balance is
-// controlled via GainNodes without requiring any graph rebuilds.
+// comb filters (each with a DelayNode + damping BiquadFilter) followed by a
+// ConvolverNode holding the precomputed impulse response of the series
+// all-pass diffusion chain.
+//
+// Live feedback cycles are limited to the combs on purpose: Chrome processes
+// audio graph cycles with an extra render quantum of loop latency, which
+// merely detunes a comb slightly but breaks the exact feedforward/feedback
+// cancellation a Schroeder all-pass depends on, producing audible resonances.
+// The all-pass parameters are fixed, so their combined impulse response is
+// generated once at construction and never needs to be rebuilt.
+//
+// All reverb parameters map to AudioParam values, so updates are cheap and
+// require no graph rebuilds or buffer regeneration.
 type ReverbFilter struct {
-	ctx wasmal.AudioContext
-
 	input   wasmal.GainNode
 	combs   [reverbCombFilterCount]*feedbackCombFilter
 	dryGain wasmal.GainNode
@@ -33,6 +41,8 @@ func NewReverbFilter(ctx wasmal.AudioContext) *ReverbFilter {
 	var combs [reverbCombFilterCount]*feedbackCombFilter
 	for i := range reverbCombFilterCount {
 		comb := newFeedbackCombFilter(ctx)
+		comb.SetFeedback(0.0)
+		comb.SetDamping(0.0)
 		comb.SetDelay(reverbCombFilterDelays[i])
 		combs[i] = comb
 	}
@@ -40,13 +50,7 @@ func NewReverbFilter(ctx wasmal.AudioContext) *ReverbFilter {
 	combMix := ctx.CreateGain()
 	combMix.Gain().SetValue(reverbCombFilterScale)
 
-	var allPasses [reverbAllPassFilterCount]*allPassFilter
-	for i := range reverbAllPassFilterCount {
-		allPass := newAllPassFilter(ctx)
-		allPass.SetFeedback(reverbAllPassFilterFeedback)
-		allPass.SetDelay(reverbAllPassFilterDelays[i])
-		allPasses[i] = allPass
-	}
+	diffusion := newDiffusionConvolver(ctx)
 
 	dryGain := ctx.CreateGain()
 	dryGain.Gain().SetValue(1.0)
@@ -64,19 +68,13 @@ func NewReverbFilter(ctx wasmal.AudioContext) *ReverbFilter {
 		comb.Output().ConnectToNode(combMix)
 	}
 
-	combMix.ConnectToNode(allPasses[0].Input())
-	for i := 1; i < reverbAllPassFilterCount; i++ {
-		prevAllPass := allPasses[i-1]
-		currentAllPass := allPasses[i]
-		prevAllPass.Output().ConnectToNode(currentAllPass.Input())
-	}
-	allPasses[reverbAllPassFilterCount-1].Output().ConnectToNode(wetGain)
+	combMix.ConnectToNode(diffusion)
+	diffusion.ConnectToNode(wetGain)
 
 	dryGain.ConnectToNode(output)
 	wetGain.ConnectToNode(output)
 
 	result := &ReverbFilter{
-		ctx:     ctx,
 		input:   input,
 		combs:   combs,
 		dryGain: dryGain,
@@ -140,10 +138,13 @@ func (f *ReverbFilter) SetWet(wet float32) {
 }
 
 const (
-	reverbCombFilterCount       = 8
-	reverbCombFilterScale       = 1.0 / float32(reverbCombFilterCount)
+	reverbCombFilterCount = 8
+	reverbCombFilterScale = 1.0 / float32(reverbCombFilterCount)
+
+	reverbDiffusionIRSeconds    = 0.25
 	reverbAllPassFilterCount    = 4
 	reverbAllPassFilterFeedback = 0.5
+	reverbAllPassFilterSpread   = 0.000522 // ~23 samples @ 44100 Hz
 )
 
 var (
@@ -159,7 +160,7 @@ var (
 		0.035306, // 1557 samples @ 44100 Hz
 		0.036667, // 1617 samples @ 44100 Hz
 	}
-	reverbAllPassFilterDelays = [reverbAllPassFilterCount]float32{
+	reverbAllPassFilterDelays = [reverbAllPassFilterCount]float64{
 		0.012608, // 556 samples @ 44100 Hz
 		0.010000, // 441 samples @ 44100 Hz
 		0.007732, // 341 samples @ 44100 Hz
@@ -223,58 +224,69 @@ func (f *feedbackCombFilter) SetDelay(delaySeconds float32) {
 	f.delay.DelayTime().SetValue(delaySeconds)
 }
 
-type allPassFilter struct {
-	input    wasmal.GainNode
-	direct   wasmal.GainNode
-	delay    wasmal.DelayNode
-	feedback wasmal.GainNode
-	output   wasmal.GainNode
+// newDiffusionConvolver creates a ConvolverNode loaded with the impulse
+// response of the four series all-pass filters, with the right channel using
+// spread delays for stereo decorrelation.
+func newDiffusionConvolver(ctx wasmal.AudioContext) wasmal.ConvolverNode {
+	sampleRate := int(ctx.SampleRate())
+	left := diffusionImpulseResponse(sampleRate, 0.0)
+	right := diffusionImpulseResponse(sampleRate, reverbAllPassFilterSpread)
+
+	buffer := ctx.CreateBuffer(2, uint32(len(left)), ctx.SampleRate())
+	buffer.GetChannelData(0).CopyFrom(left)
+	buffer.GetChannelData(1).CopyFrom(right)
+
+	convolver := ctx.CreateConvolver()
+	// Normalization must be disabled (before assigning the buffer) so that
+	// the diffusion stage preserves the unity gain of the all-pass chain.
+	convolver.SetNormalize(false)
+	convolver.SetBuffer(buffer)
+	return convolver
 }
 
-func newAllPassFilter(ctx wasmal.AudioContext) *allPassFilter {
-	input := ctx.CreateGain()
+func diffusionImpulseResponse(sampleRate int, extraDelay float64) []float32 {
+	var filters [reverbAllPassFilterCount]*allPassSampleFilter
+	for i := range reverbAllPassFilterCount {
+		delay := audio.SampleCount(reverbAllPassFilterDelays[i]+extraDelay, sampleRate)
+		filters[i] = newAllPassSampleFilter(delay)
+	}
 
-	direct := ctx.CreateGain()
-	direct.Gain().SetValue(-0.5)
+	result := make([]float32, audio.SampleCount(reverbDiffusionIRSeconds, sampleRate))
+	for n := range result {
+		sample := float32(0.0)
+		if n == 0 {
+			sample = 1.0
+		}
+		for _, filter := range filters {
+			sample = filter.ProcessSample(sample)
+		}
+		result[n] = sample
+	}
+	return result
+}
 
-	delay := ctx.CreateDelay(1.0)
-	delay.DelayTime().SetValue(0.01)
+// allPassSampleFilter implements a Schroeder all-pass filter on individual
+// samples. It mirrors the native implementation and is used only to generate
+// the diffusion impulse response.
+type allPassSampleFilter struct {
+	buffer []float32
+	delay  int
+	write  int
+}
 
-	feedback := ctx.CreateGain()
-	feedback.Gain().SetValue(0.5)
-
-	output := ctx.CreateGain()
-
-	input.ConnectToNode(direct)
-	direct.ConnectToNode(output)
-
-	input.ConnectToNode(delay)
-	delay.ConnectToNode(output)
-	output.ConnectToNode(feedback)
-	feedback.ConnectToNode(delay)
-
-	return &allPassFilter{
-		input:    input,
-		direct:   direct,
-		delay:    delay,
-		feedback: feedback,
-		output:   output,
+func newAllPassSampleFilter(delaySamples int) *allPassSampleFilter {
+	return &allPassSampleFilter{
+		buffer: make([]float32, delaySamples+1),
+		delay:  delaySamples,
 	}
 }
 
-func (f *allPassFilter) Input() wasmal.AudioNode {
-	return f.input
-}
-
-func (f *allPassFilter) Output() wasmal.AudioNode {
-	return f.output
-}
-
-func (f *allPassFilter) SetFeedback(feedback float32) {
-	f.direct.Gain().SetValue(-feedback)
-	f.feedback.Gain().SetValue(feedback)
-}
-
-func (f *allPassFilter) SetDelay(delaySeconds float32) {
-	f.delay.DelayTime().SetValue(delaySeconds)
+func (f *allPassSampleFilter) ProcessSample(input float32) float32 {
+	size := len(f.buffer)
+	read := (f.write - f.delay + size) % size
+	buffered := f.buffer[read]
+	output := buffered - input*reverbAllPassFilterFeedback
+	f.buffer[f.write] = input + output*reverbAllPassFilterFeedback
+	f.write = (f.write + 1) % size
+	return output
 }
