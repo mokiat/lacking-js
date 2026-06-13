@@ -6,8 +6,9 @@ import "github.com/mokiat/lacking/app"
 // required settings.
 func NewConfig(canvasID string) *Config {
 	return &Config{
-		canvasID:     canvasID,
-		audioEnabled: true,
+		canvasID:      canvasID,
+		cursorVisible: true,
+		audioEnabled:  true,
 	}
 }
 

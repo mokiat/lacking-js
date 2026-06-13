@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"github.com/mokiat/gomath/dprec"
-	jsaudio "github.com/mokiat/lacking-js/audio"
+	jsaudio "github.com/mokiat/lacking-js/core/audio"
 	jsrender "github.com/mokiat/lacking-js/render"
 	"github.com/mokiat/lacking/app"
-	"github.com/mokiat/lacking/audio"
+	"github.com/mokiat/lacking/core/audio"
 	"github.com/mokiat/lacking/debug/metric"
 	"github.com/mokiat/lacking/render"
 )
@@ -22,18 +22,13 @@ const (
 	taskProcessingTimeout = 30 * time.Millisecond
 )
 
-func newLoop(htmlDocument, htmlCanvas js.Value, controller app.Controller, audioEnabled bool) *loop {
-	var audioAPI *jsaudio.API
-	if audioEnabled {
-		audioAPI = jsaudio.NewAPI()
-	}
+func newLoop(htmlDocument, htmlCanvas js.Value, controller app.Controller) *loop {
 	return &loop{
 		platform:     newPlatform(),
 		htmlDocument: htmlDocument,
 		htmlCanvas:   htmlCanvas,
 		controller:   controller,
 		renderAPI:    jsrender.NewAPI(),
-		audioAPI:     audioAPI,
 		tasks:        make(chan func(), taskQueueSize),
 		gamepads: [4]*Gamepad{
 			newGamepad(0),
@@ -55,8 +50,9 @@ type loop struct {
 	htmlCanvas        js.Value
 	controller        app.Controller
 	renderAPI         render.API
-	audioAPI          *jsaudio.API
+	audioAPI          audio.API
 	cursor            *Cursor
+	cursorLocked      bool
 	tasks             chan func()
 	gamepads          [4]*Gamepad
 	gamepadStates     [4]gamepadState
@@ -71,9 +67,13 @@ type loop struct {
 	clipboardCallback js.Func
 }
 
-func (l *loop) Run() error {
-	if l.audioAPI != nil {
-		defer l.audioAPI.Close()
+func (l *loop) Run(audioEnabled bool) error {
+	if audioEnabled {
+		jsAPI := jsaudio.NewAPI()
+		defer jsAPI.Release()
+		l.audioAPI = jsAPI
+	} else {
+		l.audioAPI = audio.NewNopAPI()
 	}
 
 	l.controller.OnCreate(l)
@@ -113,6 +113,11 @@ func (l *loop) Run() error {
 	defer mouseUpCallback.Release()
 	l.htmlCanvas.Call("addEventListener", "pointerup", mouseUpCallback)
 	defer l.htmlCanvas.Call("removeEventListener", "pointerup", mouseUpCallback)
+
+	pointerLockChangeCallback := js.FuncOf(l.onPointerLockChange)
+	defer pointerLockChangeCallback.Release()
+	l.htmlDocument.Call("addEventListener", "pointerlockchange", pointerLockChangeCallback)
+	defer l.htmlDocument.Call("removeEventListener", "pointerlockchange", pointerLockChangeCallback)
 
 	mouseScrollCallback := js.FuncOf(l.onJSMouseWheel)
 	defer mouseScrollCallback.Release()
@@ -252,6 +257,10 @@ func (l *loop) SetCursorVisible(visible bool) {
 	} else {
 		l.htmlCanvas.Get("style").Set("cursor", "none")
 	}
+}
+
+func (l *loop) CursorLocked() bool {
+	return l.cursorLocked
 }
 
 func (l *loop) SetCursorLocked(locked bool) {
@@ -461,6 +470,15 @@ func (l *loop) onJSMouseWheel(this js.Value, args []js.Value) any {
 		ScrollX: event.Get("deltaX").Float() / 100.0,
 		ScrollY: event.Get("deltaY").Float() / 100.0,
 	})
+}
+
+func (l *loop) onPointerLockChange(this js.Value, args []js.Value) any {
+	if l.htmlDocument.Get("pointerLockElement").Equal(l.htmlCanvas) {
+		l.cursorLocked = true
+	} else {
+		l.cursorLocked = false
+	}
+	return js.Null()
 }
 
 func (l *loop) onCloseRequested(this js.Value, args []js.Value) any {
