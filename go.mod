@@ -17,6 +17,6 @@ require (
 	github.com/hajimehoshi/go-mp3 v0.3.4 // indirect
 	github.com/mokiat/gblob v0.6.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
-	golang.org/x/image v0.41.0 // indirect
-	golang.org/x/text v0.37.0 // indirect
+	golang.org/x/image v0.42.0 // indirect
+	golang.org/x/text v0.38.0 // indirect
 )
