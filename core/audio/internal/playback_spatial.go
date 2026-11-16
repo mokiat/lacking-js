@@ -21,13 +21,17 @@ func NewSpatialPlayback(basePlayback *BasePlayback) *SpatialPlayback {
 	pannerNode := ctx.CreatePanner()
 	basePlayback.Output().ConnectToNode(pannerNode)
 
-	return &SpatialPlayback{
+	result := &SpatialPlayback{
 		BasePlayback: basePlayback,
 		pannerNode:   pannerNode,
 
 		position: sprec.ZeroVec3(),
 		rotation: sprec.IdentityQuat(),
 	}
+	// A WebAudio panner faces +X by default, whereas an emitter with an
+	// identity rotation needs to face +Z.
+	result.SetRotation(result.rotation)
+	return result
 }
 
 func (p *SpatialPlayback) Output() wasmal.AudioNode {

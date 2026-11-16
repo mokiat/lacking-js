@@ -47,8 +47,9 @@ func (l *SpatialListener) SetRotation(rotation sprec.Quat) {
 	l.delegate.UpY().SetValue(orientationY.Y)
 	l.delegate.UpZ().SetValue(orientationY.Z)
 
-	orientationZ := rotation.OrientationZ()
-	l.delegate.ForwardX().SetValue(orientationZ.X)
-	l.delegate.ForwardY().SetValue(orientationZ.Y)
-	l.delegate.ForwardZ().SetValue(orientationZ.Z)
+	// The listener looks down its -Z axis.
+	forward := sprec.InverseVec3(rotation.OrientationZ())
+	l.delegate.ForwardX().SetValue(forward.X)
+	l.delegate.ForwardY().SetValue(forward.Y)
+	l.delegate.ForwardZ().SetValue(forward.Z)
 }
