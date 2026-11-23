@@ -233,8 +233,8 @@ func newDiffusionConvolver(ctx wasmal.AudioContext) wasmal.ConvolverNode {
 	right := diffusionImpulseResponse(sampleRate, reverbAllPassFilterSpread)
 
 	buffer := ctx.CreateBuffer(2, uint32(len(left)), ctx.SampleRate())
-	buffer.GetChannelData(0).CopyFrom(left)
-	buffer.GetChannelData(1).CopyFrom(right)
+	buffer.CopyToChannel(left, 0, 0)
+	buffer.CopyToChannel(right, 1, 0)
 
 	convolver := ctx.CreateConvolver()
 	// Normalization must be disabled (before assigning the buffer) so that

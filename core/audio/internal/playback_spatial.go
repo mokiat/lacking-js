@@ -52,9 +52,7 @@ func (p *SpatialPlayback) Position() sprec.Vec3 {
 // SetPosition sets the emitter's position in world space.
 func (p *SpatialPlayback) SetPosition(position sprec.Vec3) {
 	p.position = position
-	p.pannerNode.PositionX().SetValue(position.X)
-	p.pannerNode.PositionY().SetValue(position.Y)
-	p.pannerNode.PositionZ().SetValue(position.Z)
+	p.pannerNode.SetPosition(position.X, position.Y, position.Z)
 }
 
 // Rotation returns the emitter's orientation in world space. The emitter's
@@ -67,9 +65,7 @@ func (p *SpatialPlayback) Rotation() sprec.Quat {
 func (p *SpatialPlayback) SetRotation(rotation sprec.Quat) {
 	p.rotation = rotation
 	orientationZ := rotation.OrientationZ()
-	p.pannerNode.OrientationX().SetValue(orientationZ.X)
-	p.pannerNode.OrientationY().SetValue(orientationZ.Y)
-	p.pannerNode.OrientationZ().SetValue(orientationZ.Z)
+	p.pannerNode.SetOrientation(orientationZ.X, orientationZ.Y, orientationZ.Z)
 }
 
 // InnerConeAngle returns the inner cone angle of the emitter.
