@@ -17,15 +17,14 @@ func NewMedia(ctx wasmal.AudioContext, data audio.MediaData) *Media {
 
 	buffer := ctx.CreateBuffer(2, uint32(len(frames)), float32(data.SampleRate))
 
-	channelData := buffer.GetChannelData(0)
+	left := make([]float32, len(frames))
+	right := make([]float32, len(frames))
 	for i, frame := range frames {
-		channelData.Set(i, frame.Left)
+		left[i] = frame.Left
+		right[i] = frame.Right
 	}
-
-	channelData = buffer.GetChannelData(1)
-	for i, frame := range frames {
-		channelData.Set(i, frame.Right)
-	}
+	buffer.CopyToChannel(left, 0, 0)
+	buffer.CopyToChannel(right, 1, 0)
 
 	return &Media{
 		buffer: buffer,

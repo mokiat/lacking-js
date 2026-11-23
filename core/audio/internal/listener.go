@@ -30,9 +30,7 @@ func (l *SpatialListener) Position() sprec.Vec3 {
 
 func (l *SpatialListener) SetPosition(position sprec.Vec3) {
 	l.position = position
-	l.delegate.PositionX().SetValue(position.X)
-	l.delegate.PositionY().SetValue(position.Y)
-	l.delegate.PositionZ().SetValue(position.Z)
+	l.delegate.SetPosition(position.X, position.Y, position.Z)
 }
 
 func (l *SpatialListener) Rotation() sprec.Quat {
@@ -42,14 +40,11 @@ func (l *SpatialListener) Rotation() sprec.Quat {
 func (l *SpatialListener) SetRotation(rotation sprec.Quat) {
 	l.rotation = rotation
 
-	orientationY := rotation.OrientationY()
-	l.delegate.UpX().SetValue(orientationY.X)
-	l.delegate.UpY().SetValue(orientationY.Y)
-	l.delegate.UpZ().SetValue(orientationY.Z)
-
+	up := rotation.OrientationY()
 	// The listener looks down its -Z axis.
 	forward := sprec.InverseVec3(rotation.OrientationZ())
-	l.delegate.ForwardX().SetValue(forward.X)
-	l.delegate.ForwardY().SetValue(forward.Y)
-	l.delegate.ForwardZ().SetValue(forward.Z)
+	l.delegate.SetOrientation(
+		forward.X, forward.Y, forward.Z,
+		up.X, up.Y, up.Z,
+	)
 }

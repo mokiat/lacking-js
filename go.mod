@@ -5,8 +5,8 @@ go 1.27
 require (
 	github.com/mokiat/gog v0.22.0
 	github.com/mokiat/gomath v0.18.0
-	github.com/mokiat/lacking v0.25.0
-	github.com/mokiat/wasmal v0.3.0
+	github.com/mokiat/lacking v0.25.2
+	github.com/mokiat/wasmal v0.4.0
 	github.com/mokiat/wasmgl v0.7.0
 )
 

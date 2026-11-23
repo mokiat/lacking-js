@@ -16,7 +16,9 @@ type API struct {
 var _ audio.API = (*API)(nil)
 
 func NewAPI() *API {
-	ctx := wasmal.NewAudioContext()
+	ctx := wasmal.NewAudioContext(wasmal.AudioContextOptions{
+		LatencyHint: wasmal.LatencyHintCategory(wasmal.AudioContextLatencyCategoryInteractive),
+	})
 
 	masterBus := internal.NewMasterBus(ctx)
 	masterBus.Output().ConnectToNode(ctx.Destination())
