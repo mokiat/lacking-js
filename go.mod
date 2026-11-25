@@ -7,7 +7,7 @@ require (
 	github.com/mokiat/gomath v0.18.0
 	github.com/mokiat/lacking v0.25.2
 	github.com/mokiat/wasmal v0.4.0
-	github.com/mokiat/wasmgl v0.7.0
+	github.com/mokiat/wasmgl v0.8.0
 )
 
 require (
