@@ -56,7 +56,7 @@ func Run(cfg *Config, controller app.Controller) error {
 		return fmt.Errorf("error initializing webgl: %w", err)
 	}
 	for _, ext := range cfg.glExtensions {
-		if wasmgl.GetExtension(ext) == nil {
+		if !wasmgl.GetExtension(ext).IsValid() {
 			logger.Warn("Extension might not be supported",
 				slog.String("extension", ext),
 			)
